@@ -1,7 +1,7 @@
 # Treniraj sa Akijem — PWA za trenera i klijente
 
 Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, kasnije ishrana, napredak i poruke.
-Plan po fazama: `docs/PLAN.md`. Trenutno: **faza 1 gotova** (frontend, podaci lokalno).
+Plan po fazama: `docs/PLAN.md`. Trenutno: **faza 2 u toku** (prijava i podaci na Supabase-u).
 
 Odgovaraj na srpskom (latinica). Ja sam QA automation inženjer (Java, Selenium, JUnit, Python),
 radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
@@ -19,10 +19,11 @@ radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
 ```
 src/
   main.jsx            ulaz: render + registracija service workera (samo u produkciji)
-  App.jsx             bira ekran: nema profila → Onboarding, inače po ruti (#/...)
+  App.jsx             bira ekran: nije prijavljen → Login, nema profila → Onboarding, inače po ruti (#/...)
   config.js           ime trenera i aplikacije
   data/api.js         JEDINO mesto za čitanje/pisanje podataka (async funkcije)
-  data/mockData.js    demo programi, treninzi, vežbe (u fazi 2 → Supabase)
+  lib/supabase.js     Supabase klijent (koristi ga samo api.js)
+  lib/useAuth.js      hook za sesiju: undefined = proverava, null = odjavljen
   lib/router.js       mali hash router: useRoute(), navigate('program', id), href(), back()
   lib/useData.js      hook za async učitavanje: const { data, reload } = useData(() => api(), [deps])
   lib/format.js       datumi, brojevi, nedelja, streak, YouTube ID
@@ -32,7 +33,7 @@ src/
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, supabase-schema.sql
+docs/                 PLAN.md, supabase-schema.sql, supabase-seed.sql
 public/               manifest, sw.js, ikonice
 ```
 
@@ -41,10 +42,8 @@ public/               manifest, sw.js, ikonice
 `#/ishrana`, `#/napredak`, `#/poruke` (poslednje tri su "Stiže uskoro").
 
 ## Pravila
-- **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne diraju localStorage direktno. Sve funkcije su async,
-  da bi prelazak na Supabase menjao samo api.js.
-- Oblik lokalnih podataka (`aki-fitness-v1`): `{ profile, activeProgramId, sessions[], weights[] }`.
-  Ne menjaj ga bez migracije u `read()`.
+- **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.
+- Upiti za klijentove podatke uvek filtriraju po `user_id`, jer RLS treneru dozvoljava da čita sve.
 - **Dizajn:** Organic sistem. Boje, fontovi, radijusi isključivo preko CSS promenljivih
   (`var(--color-accent)`, `var(--font-heading)`…), nikad hex u komponentama. Pravila: `design/organic-design-system.md`.
   Novi ekran: prvo pogledaj `design/fitness-app-design.html` (ekrani 05 Ishrana, 06 Napredak, 07 Poruke već postoje u dizajnu).

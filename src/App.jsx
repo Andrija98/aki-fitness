@@ -38,10 +38,21 @@ export default function App() {
 // Odvojena komponenta da se getProfile i ostali podaci učitaju tek posle prijave.
 function AuthedApp() {
   const route = useRoute();
-  const { data: profile, loading, reload } = useData(getProfile);
+  const { data: profile, loading, error, reload } = useData(getProfile);
   const toastMessage = useToast();
 
   if (loading) return null;
+
+  // Bez ovoga bi pad mreže izgledao kao "nema profila" i klijent bi dobio onboarding.
+  if (error) {
+    return (
+      <div className="screen screen--no-tabbar">
+        <h1 className="ob-title">Nema veze</h1>
+        <p className="muted" style={{ margin: 0 }}>Podaci nisu učitani. Proveri internet i pokušaj ponovo.</p>
+        <button className="pill-btn" style={{ marginTop: 'auto' }} onClick={reload}>Pokušaj ponovo</button>
+      </div>
+    );
+  }
 
   if (!profile || route.name === 'ciljevi') {
     return <Onboarding initial={profile} onDone={reload} />;
@@ -53,7 +64,7 @@ function AuthedApp() {
     case 'treninzi': screen = <Programs />; break;
     case 'program': screen = <ProgramDetail programId={p1} />; break;
     case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
-    case 'profil': screen = <Profile profile={profile} onReset={reload} />; break;
+    case 'profil': screen = <Profile profile={profile} />; break;
     case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
     case 'napredak': screen = <ComingSoon title="Napredak" icon="chart" text="Grafikon težine, mere i fotografije napretka." phase="Faza 2" />; break;
     case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;

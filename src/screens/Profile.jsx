@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { navigate, back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
-import { getSessions, getWeights, addWeight, resetAll, signOut } from '../data/api.js';
+import { getSessions, getWeights, addWeight, signOut } from '../data/api.js';
 import { dayStreak, formatDuration, formatNumber } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import Icon from '../components/Icon.jsx';
@@ -14,7 +14,7 @@ async function load() {
   return { sessions, weights };
 }
 
-export default function Profile({ profile, onReset }) {
+export default function Profile({ profile }) {
   const { data, reload } = useData(load);
   const [weight, setWeight] = useState('');
   if (!data) return null;
@@ -32,13 +32,6 @@ export default function Profile({ profile, onReset }) {
     setWeight('');
     toast('Težina upisana');
     reload();
-  }
-
-  async function reset() {
-    if (!window.confirm('Obrisati sve podatke sa ovog telefona? Ovo ne može da se vrati.')) return;
-    await resetAll();
-    navigate('pocetna');
-    onReset();
   }
 
   async function logout() {
@@ -96,7 +89,6 @@ export default function Profile({ profile, onReset }) {
         <button onClick={() => navigate('ciljevi')}><span>Moji ciljevi</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={() => navigate('treninzi')}><span>Promeni program</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={logout}><span>Odjavi se</span></button>
-        <button onClick={reset} style={{ color: 'var(--color-accent-700)' }}><span>Obriši sve podatke</span></button>
       </div>
     </div>
   );

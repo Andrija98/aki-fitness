@@ -17,8 +17,8 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 1. Napraviti Supabase projekat, pokrenuti `docs/supabase-schema.sql`
 2. `npm install @supabase/supabase-js`, ključevi u `.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
 3. Login ekran (email magic link ili email + lozinka)
-4. Prepisati funkcije u `src/data/api.js` na Supabase pozive (ekrani se ne menjaju)
-5. Prebaciti sadržaj iz `mockData.js` u bazu (seed skripta)
+4. Prebaciti demo sadržaj u bazu (`docs/supabase-seed.sql`)
+5. Prepisati funkcije u `src/data/api.js` na Supabase pozive
 6. Ekran **Napredak**: grafikon težine, mere, istorija treninga
 7. Trenerov pravi sadržaj: YouTube (unlisted) linkovi za svaku vežbu
 

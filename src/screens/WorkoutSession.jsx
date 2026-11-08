@@ -34,6 +34,8 @@ export default function WorkoutSession({ programId, workoutId }) {
   const [input, setInput] = useState({ reps: '', kg: '' });
   const [rest, setRest] = useState(null); // { left, total } dok traje pauza
   const [finished, setFinished] = useState(null); // sačuvan trening
+  const [unsaved, setUnsaved] = useState(null); // trening čije čuvanje nije uspelo, čeka ponovni pokušaj
+  const [saving, setSaving] = useState(false);
   const startedAt = useRef(Date.now());
 
   const workout = data?.workout;
@@ -95,20 +97,45 @@ export default function WorkoutSession({ programId, workoutId }) {
     if (item.rest) setRest({ left: item.rest, total: item.rest });
   }
 
-  async function finish(loggedNow) {
+  function finish(loggedNow) {
     if (!loggedNow.length) return toast('Nijedna serija nije odrađena');
-    const saved = await saveSession({
+    setRest(null);
+    persist({
       programId,
       workoutId,
       durationSec: Math.round((Date.now() - startedAt.current) / 1000),
       sets: loggedNow,
     });
-    setRest(null);
-    setFinished(saved);
+  }
+
+  async function persist(session) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      setFinished(await saveSession(session));
+      setUnsaved(null);
+    } catch {
+      setUnsaved(session);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function close() {
     if (!logged.length || window.confirm('Prekinuti trening? Odrađene serije se neće sačuvati.')) back('pocetna');
+  }
+
+  if (unsaved) {
+    return (
+      <div className="screen screen--no-tabbar">
+        <h1 className="ob-title">Trening nije sačuvan</h1>
+        <p className="muted" style={{ margin: 0 }}>Proveri internet. Serije su i dalje tu dok ne zatvoriš ovaj ekran.</p>
+        <div className="ob-footer" style={{ marginTop: 'auto' }}>
+          <button className="pill-btn" disabled={saving} onClick={() => persist(unsaved)}>{saving ? 'Čuvam…' : 'Pokušaj ponovo'}</button>
+          <button className="text-btn" onClick={() => { if (window.confirm('Odustati? Odrađene serije se neće sačuvati.')) back('pocetna'); }}>Odustani</button>
+        </div>
+      </div>
+    );
   }
 
   const next = workout.items[exIndex + 1];
