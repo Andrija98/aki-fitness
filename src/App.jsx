@@ -1,11 +1,13 @@
 // Koren aplikacije: odlučuje koji ekran se prikazuje.
-// 1) Nema profila → onboarding.  2) Inače ekran prema adresi (#/...).
+// 1) Nije prijavljen → login.  2) Nema profila → onboarding.  3) Inače ekran prema adresi (#/...).
 
 import { useRoute } from './lib/router.js';
 import { useData } from './lib/useData.js';
 import { useToast } from './lib/toast.js';
+import { useAuth } from './lib/useAuth.js';
 import { getProfile } from './data/api.js';
 import TabBar from './components/TabBar.jsx';
+import Login from './screens/Login.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Home from './screens/Home.jsx';
 import Programs from './screens/Programs.jsx';
@@ -26,6 +28,15 @@ const TAB_FOR_ROUTE = {
 };
 
 export default function App() {
+  const { session, loading } = useAuth();
+
+  if (loading) return null;
+  if (!session) return <Login />;
+  return <AuthedApp />;
+}
+
+// Odvojena komponenta da se getProfile i ostali podaci učitaju tek posle prijave.
+function AuthedApp() {
   const route = useRoute();
   const { data: profile, loading, reload } = useData(getProfile);
   const toastMessage = useToast();

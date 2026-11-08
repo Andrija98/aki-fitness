@@ -6,6 +6,7 @@
 // zato su sve funkcije async (vraćaju Promise) već sada.
 
 import { programs, workouts, exercises } from './mockData.js';
+import { supabase } from '../lib/supabase.js';
 
 const KEY = 'aki-fitness-v1';
 
@@ -27,6 +28,32 @@ function write(state) {
 }
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+// ---------- Prijava ----------
+
+export async function getAuthSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data.session;
+}
+
+// scope 'local': odjavljuje samo ovaj uređaj, ne i klijentov telefon ako je prijavljen na više mesta.
+export async function signOut() {
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error) throw error;
+}
+
+// callback(session) se zove pri svakoj promeni; vraća funkciju za odjavu slušaoca.
+export function onAuthChange(callback) {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  return () => data.subscription.unsubscribe();
+}
 
 // ---------- Sadržaj (trener) ----------
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { navigate, back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
-import { getSessions, getWeights, addWeight, resetAll } from '../data/api.js';
+import { getSessions, getWeights, addWeight, resetAll, signOut } from '../data/api.js';
 import { dayStreak, formatDuration, formatNumber } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import Icon from '../components/Icon.jsx';
@@ -39,6 +39,15 @@ export default function Profile({ profile, onReset }) {
     await resetAll();
     navigate('pocetna');
     onReset();
+  }
+
+  async function logout() {
+    try {
+      await signOut();
+      navigate('pocetna');
+    } catch {
+      toast('Odjava nije uspela');
+    }
   }
 
   return (
@@ -86,6 +95,7 @@ export default function Profile({ profile, onReset }) {
       <div className="list">
         <button onClick={() => navigate('ciljevi')}><span>Moji ciljevi</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={() => navigate('treninzi')}><span>Promeni program</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
+        <button onClick={logout}><span>Odjavi se</span></button>
         <button onClick={reset} style={{ color: 'var(--color-accent-700)' }}><span>Obriši sve podatke</span></button>
       </div>
     </div>

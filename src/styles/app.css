@@ -125,6 +125,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .text-input:focus { border-color: var(--color-accent); outline: none; }
 .field-label { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: block; }
 
+/* ---------- Prijava ---------- */
+.login-content { justify-content: center; }
+.login-error { margin: 0; font-size: 14px; font-weight: 600; color: var(--color-accent-700); }
+
 /* ---------- Početna ---------- */
 .avatar {
   width: 48px; height: 48px; flex: none; border-radius: 50%; border: 0; padding: 0;
