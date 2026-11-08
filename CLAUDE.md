@@ -1,0 +1,63 @@
+# Treniraj sa Akijem — PWA za trenera i klijente
+
+Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, kasnije ishrana, napredak i poruke.
+Plan po fazama: `docs/PLAN.md`. Trenutno: **faza 1 gotova** (frontend, podaci lokalno).
+
+Odgovaraj na srpskom (latinica). Ja sam QA automation inženjer (Java, Selenium, JUnit, Python),
+radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
+- Pre veće izmene ukratko objasni plan i koje fajlove menjaš, pa sačekaj moje "ok".
+- Posle izmene objasni šta si uradio i zašto.
+- Ako je moja ideja loša ili prekomplikovana, reci direktno.
+
+## Komande
+- `npm install`: prvi put
+- `npm run dev`: razvojni server sa hot reload-om (`--host`, pa radi i sa telefona u istoj mreži)
+- `npm run build`: produkcijski build u `dist/` (to ide na Netlify)
+- `npm run preview`: lokalno pokreni build
+
+## Struktura
+```
+src/
+  main.jsx            ulaz: render + registracija service workera (samo u produkciji)
+  App.jsx             bira ekran: nema profila → Onboarding, inače po ruti (#/...)
+  config.js           ime trenera i aplikacije
+  data/api.js         JEDINO mesto za čitanje/pisanje podataka (async funkcije)
+  data/mockData.js    demo programi, treninzi, vežbe (u fazi 2 → Supabase)
+  lib/router.js       mali hash router: useRoute(), navigate('program', id), href(), back()
+  lib/useData.js      hook za async učitavanje: const { data, reload } = useData(() => api(), [deps])
+  lib/format.js       datumi, brojevi, nedelja, streak, YouTube ID
+  lib/toast.js        toast('Poruka') sa bilo kog mesta
+  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer)
+  screens/            jedan fajl po ekranu
+  styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
+  styles/app.css      stilovi aplikacije, samo preko tokena
+design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
+docs/                 PLAN.md, supabase-schema.sql
+public/               manifest, sw.js, ikonice
+```
+
+## Rute
+`#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/ciljevi`,
+`#/ishrana`, `#/napredak`, `#/poruke` (poslednje tri su "Stiže uskoro").
+
+## Pravila
+- **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne diraju localStorage direktno. Sve funkcije su async,
+  da bi prelazak na Supabase menjao samo api.js.
+- Oblik lokalnih podataka (`aki-fitness-v1`): `{ profile, activeProgramId, sessions[], weights[] }`.
+  Ne menjaj ga bez migracije u `read()`.
+- **Dizajn:** Organic sistem. Boje, fontovi, radijusi isključivo preko CSS promenljivih
+  (`var(--color-accent)`, `var(--font-heading)`…), nikad hex u komponentama. Pravila: `design/organic-design-system.md`.
+  Novi ekran: prvo pogledaj `design/fitness-app-design.html` (ekrani 05 Ishrana, 06 Napredak, 07 Poruke već postoje u dizajnu).
+- Ikonice: Lucide, `stroke-width 2.75`, dodaju se u `components/Icon.jsx`.
+- Mobilno prvo: input font ≥16px (iOS zoom), dodirne površine ≥44px, `env(safe-area-inset-*)`.
+- Pristupačnost: pravi `<button>`/`<a>`, `aria-label` na dugmićima samo sa ikonicom.
+- Bez novih biblioteka bez mog pitanja. Male, fokusirane izmene; ne refaktoriši ono što nisam tražio.
+- Tekst u aplikaciji je na srpskom (latinica).
+
+## Provera pre commita
+`npm run build` mora da prođe. Ručno: onboarding → Početna → današnji trening → završi par serija
+(pauza se pojavljuje) → rezime → Početna pokazuje kvačicu za danas. Konzola bez grešaka.
+
+## Deploy
+GitHub repo povezan sa Netlify-em: build command `npm run build`, publish directory `dist`.
+Svaki `git push` na `main` automatski deploy-uje.

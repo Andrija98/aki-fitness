@@ -1,0 +1,62 @@
+// Koren aplikacije: odlučuje koji ekran se prikazuje.
+// 1) Nema profila → onboarding.  2) Inače ekran prema adresi (#/...).
+
+import { useRoute } from './lib/router.js';
+import { useData } from './lib/useData.js';
+import { useToast } from './lib/toast.js';
+import { getProfile } from './data/api.js';
+import TabBar from './components/TabBar.jsx';
+import Onboarding from './screens/Onboarding.jsx';
+import Home from './screens/Home.jsx';
+import Programs from './screens/Programs.jsx';
+import ProgramDetail from './screens/ProgramDetail.jsx';
+import WorkoutSession from './screens/WorkoutSession.jsx';
+import Profile from './screens/Profile.jsx';
+import ComingSoon from './screens/ComingSoon.jsx';
+
+// Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
+const TAB_FOR_ROUTE = {
+  pocetna: 'pocetna',
+  profil: 'pocetna',
+  treninzi: 'treninzi',
+  program: 'treninzi',
+  ishrana: 'ishrana',
+  napredak: 'napredak',
+  poruke: 'poruke',
+};
+
+export default function App() {
+  const route = useRoute();
+  const { data: profile, loading, reload } = useData(getProfile);
+  const toastMessage = useToast();
+
+  if (loading) return null;
+
+  if (!profile || route.name === 'ciljevi') {
+    return <Onboarding initial={profile} onDone={reload} />;
+  }
+
+  const [p1, p2] = route.params;
+  let screen;
+  switch (route.name) {
+    case 'treninzi': screen = <Programs />; break;
+    case 'program': screen = <ProgramDetail programId={p1} />; break;
+    case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
+    case 'profil': screen = <Profile profile={profile} onReset={reload} />; break;
+    case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
+    case 'napredak': screen = <ComingSoon title="Napredak" icon="chart" text="Grafikon težine, mere i fotografije napretka." phase="Faza 2" />; break;
+    case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;
+    default: screen = <Home profile={profile} />;
+  }
+
+  const tab = TAB_FOR_ROUTE[route.name] ?? (route.name === 'trening' ? null : 'pocetna');
+
+  return (
+    <>
+      {/* key: kad se promeni adresa, ekran se kreira iznova (svež state) */}
+      <main key={route.name + route.params.join('/')}>{screen}</main>
+      {tab && <TabBar active={tab} />}
+      {toastMessage && <div className="toast" role="status">{toastMessage}</div>}
+    </>
+  );
+}

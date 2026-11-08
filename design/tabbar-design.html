@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;left:0;right:0;bottom:0;padding:10px 14px 30px;background:var(--color-neutral-100);border-radius:28px 28px 0 0;box-shadow:0 -4px 20px color-mix(in srgb, #2e2b25 8%, transparent);display:grid;grid-template-columns:repeat(5,1fr);font-family:var(--font-body)">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ c0 }}">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+    <span style="font-size:11px;font-weight:600">Početna</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ c1 }}">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"></path><path d="m21 21-1-1"></path><path d="m3 3 1 1"></path><path d="m18 22 4-4"></path><path d="m2 6 4-4"></path><path d="m3 10 7-7"></path><path d="m14 21 7-7"></path></svg>
+    <span style="font-size:11px;font-weight:600">Treninzi</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ c2 }}">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>
+    <span style="font-size:11px;font-weight:600">Ishrana</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ c3 }}">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+    <span style="font-size:11px;font-weight:600">Napredak</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ c4 }}">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+    <span style="font-size:11px;font-weight:600">Aki</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:100},&quot;active&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:0,&quot;min&quot;:0,&quot;max&quot;:4,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const a = Number(this.props.active ?? 0);
+    const c = i => i === a ? 'var(--color-accent)' : 'var(--color-neutral-600)';
+    return { c0: c(0), c1: c(1), c2: c(2), c3: c(3), c4: c(4) };
+  }
+}
+</script>
+</body>
+</html>
