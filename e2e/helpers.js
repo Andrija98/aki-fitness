@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 
 export const ACCOUNT_A = { email: 'e2e-a@aki.test', passwordVar: 'E2E_A_PASSWORD' };
 export const ACCOUNT_B = { email: 'e2e-b@aki.test', passwordVar: 'E2E_B_PASSWORD' };
+export const ACCOUNT_TRAINER = { email: 'e2e-trener@aki.test', passwordVar: 'E2E_TRAINER_PASSWORD' };
 
 // ID-jevi iz docs/supabase-seed.sql
 export const LAGANO = 'c0000000-0000-4000-8000-000000000001';

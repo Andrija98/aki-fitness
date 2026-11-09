@@ -2,16 +2,18 @@
 // Ekran ovo ne može da proveri, jer api.js sam filtrira po user_id.
 
 import { test, expect } from '@playwright/test';
-import { ACCOUNT_A, ACCOUNT_B, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount } from './helpers.js';
+import { ACCOUNT_A, ACCOUNT_B, ACCOUNT_TRAINER, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount } from './helpers.js';
 
 const DENIED = 403;
 let a;
 let b;
+let trainer;
 let sessionId;
 
 test.beforeAll(async () => {
   a = await resetAccount(ACCOUNT_A);
   b = await apiLogin(ACCOUNT_B);
+  trainer = await apiLogin(ACCOUNT_TRAINER);
 
   await rest(`profiles?id=eq.${a.id}`, { token: a.token, method: 'PATCH', body: { name: 'Vlasnik' } });
   await rest('weights', { token: a.token, method: 'POST', body: { user_id: a.id, date: '2000-01-02', kg: 70 } });
@@ -80,6 +82,42 @@ test('klijent ne može sam sebi da da ulogu trenera', async () => {
   expect(result.status).toBe(DENIED);
   const role = await rest(`profiles?id=eq.${b.id}&select=role`, { token: b.token });
   expect(role.rows).toEqual([{ role: 'client' }]);
+});
+
+test('trener čita podatke klijenta', async () => {
+  for (const path of [`profiles?id=eq.${a.id}`, `sessions?user_id=eq.${a.id}`, `session_sets?session_id=eq.${sessionId}`, `weights?user_id=eq.${a.id}`, `enrollments?user_id=eq.${a.id}`]) {
+    const result = await rest(path, { token: trainer.token });
+    expect(result.rows, path).toHaveLength(1);
+  }
+});
+
+test('trener ne može da upisuje u ime klijenta', async () => {
+  const weight = await rest('weights', { token: trainer.token, method: 'POST', body: { user_id: a.id, date: '2000-01-01', kg: 99 } });
+  expect(weight.status).toBe(DENIED);
+  const session = await rest('sessions', { token: trainer.token, method: 'POST', body: { user_id: a.id, duration_sec: 1 } });
+  expect(session.status).toBe(DENIED);
+  const set = await rest('session_sets', { token: trainer.token, method: 'POST', body: { session_id: sessionId, exercise_id: SKLEKOVI, set_no: 2, reps: 1 } });
+  expect(set.status).toBe(DENIED);
+});
+
+test('trener ne može da menja ni briše podatke klijenta', async () => {
+  const profile = await rest(`profiles?id=eq.${a.id}`, { token: trainer.token, method: 'PATCH', body: { name: 'hak' } });
+  expect(profile.rows).toEqual([]);
+  const session = await rest(`sessions?id=eq.${sessionId}`, { token: trainer.token, method: 'DELETE' });
+  expect(session.rows).toEqual([]);
+  const weight = await rest(`weights?user_id=eq.${a.id}`, { token: trainer.token, method: 'DELETE' });
+  expect(weight.rows).toEqual([]);
+
+  const own = await rest(`profiles?id=eq.${a.id}&select=name`, { token: a.token });
+  expect(own.rows).toEqual([{ name: 'Vlasnik' }]);
+  const stillThere = await rest(`sessions?id=eq.${sessionId}&select=id`, { token: a.token });
+  expect(stillThere.rows).toHaveLength(1);
+});
+
+test('trener može da menja sadržaj', async () => {
+  const changed = await rest(`programs?id=eq.${LAGANO}`, { token: trainer.token, method: 'PATCH', body: { published: true } });
+  expect(changed.status).toBe(200);
+  expect(changed.rows).toHaveLength(1);
 });
 
 test('klijent ne može da menja sadržaj trenera', async () => {

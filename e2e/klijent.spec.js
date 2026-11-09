@@ -2,7 +2,7 @@
 
 import { test, expect } from '@playwright/test';
 import {
-  ACCOUNT_A, LAGANO, SNAGA_KUCA, GORNJI, rest, resetAccount, loginUi, finishOnboarding,
+  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, rest, resetAccount, loginUi, finishOnboarding,
   expectExercise, skipExercise, completeSetAndSkipRest,
 } from './helpers.js';
 
@@ -19,6 +19,27 @@ test.describe('bez naloga', () => {
     await loginUi(page, ACCOUNT_A, 'namerno-pogresna-lozinka');
     await expect(page.getByRole('alert')).toHaveText('Pogrešan email ili lozinka.');
     await expect(loginHeading(page)).toBeVisible();
+  });
+});
+
+test.describe('trener', () => {
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('u aplikaciji vidi svoje podatke, ne treninge klijenata', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    const trainer = await resetAccount(ACCOUNT_TRAINER);
+    await rest('sessions', { token: client.token, method: 'POST', body: { program_id: LAGANO, workout_id: GORNJI, duration_sec: 60 } });
+
+    // Kontrola: trener može da pročita taj trening, pa ga od kvačice štiti samo filter u api.js.
+    const visible = await rest(`sessions?user_id=eq.${client.id}&select=id`, { token: trainer.token });
+    expect(visible.rows).toHaveLength(1);
+
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await expect(page.locator('.week .dot.done')).toHaveCount(0);
   });
 });
 
