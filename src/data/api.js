@@ -128,6 +128,17 @@ export async function getWorkout(id) {
   };
 }
 
+export async function getExercises() {
+  const rows = unwrap(await supabase.from('exercises').select('id, name, video_url').order('name'));
+  return rows.map((r) => ({ id: r.id, name: r.name, videoUrl: r.video_url }));
+}
+
+// url = null uklanja video. RLS odbijen UPDATE ne vraća grešku nego 0 redova, pa to proveravamo ručno.
+export async function setExerciseVideo(id, url) {
+  const rows = unwrap(await supabase.from('exercises').update({ video_url: url }).eq('id', id).select('id'));
+  if (!rows.length) throw new Error('Video nije sačuvan.');
+}
+
 // ---------- Korisnik ----------
 
 // Trigger pravi prazan red pri otvaranju naloga, pa je "nema profila" = onboarding nije završen (goal je prazan).
@@ -137,6 +148,7 @@ export async function getProfile() {
   if (!row?.goal) return null;
   const latest = unwrap(await supabase.from('weights').select('kg').eq('user_id', userId).order('date', { ascending: false }).limit(1));
   return {
+    role: row.role,
     name: row.name,
     goal: row.goal,
     location: row.location,

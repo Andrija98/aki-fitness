@@ -136,6 +136,22 @@ test('trener može da menja sadržaj', async () => {
   expect(changed.rows).toHaveLength(1);
 });
 
+test('video vežbe može da menja samo trener', async () => {
+  const before = await rest(`exercises?id=eq.${SKLEKOVI}&select=video_url`, { token: b.token });
+  expect(before.rows).toHaveLength(1);
+  const current = before.rows[0].video_url;
+
+  const byClient = await rest(`exercises?id=eq.${SKLEKOVI}`, { token: b.token, method: 'PATCH', body: { video_url: 'https://youtu.be/hakhakhak00' } });
+  expect(byClient.rows).toEqual([]);
+
+  // Trener upisuje istu vrednost koju je pročitao, da test ne menja pravi sadržaj.
+  const byTrainer = await rest(`exercises?id=eq.${SKLEKOVI}`, { token: trainer.token, method: 'PATCH', body: { video_url: current } });
+  expect(byTrainer.rows).toHaveLength(1);
+
+  const after = await rest(`exercises?id=eq.${SKLEKOVI}&select=video_url`, { token: b.token });
+  expect(after.rows).toEqual([{ video_url: current }]);
+});
+
 test('klijent ne može da menja sadržaj trenera', async () => {
   const created = await rest('programs', { token: b.token, method: 'POST', body: { title: 'hak', weeks: 1, per_week: 1 } });
   expect(created.status).toBe(DENIED);
