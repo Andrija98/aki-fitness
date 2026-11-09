@@ -204,6 +204,31 @@ test.describe('prijavljen klijent', () => {
     await expect(page.locator('.chart-tip')).toContainText('75 kg');
   });
 
+  test('Napredak: mere se upisuju, dopunjuju i pokazuju razliku', async ({ page }) => {
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Napredak' }).click();
+
+    await page.getByRole('button', { name: 'Upiši mere' }).click();
+    await page.getByRole('button', { name: 'Sačuvaj mere' }).click();
+    await expect(page.getByText('Unesi bar jednu meru')).toBeVisible();
+
+    await page.getByLabel('Struk (cm)').fill('80');
+    await page.getByRole('button', { name: 'Sačuvaj mere' }).click();
+    await expect(page.locator('.measures')).toContainText('80 cm');
+
+    // Drugi upis istog dana, samo kukovi: struk ne sme da nestane.
+    await page.getByRole('button', { name: 'Upiši mere' }).click();
+    await page.getByLabel('Kukovi (cm)').fill('98,5');
+    await page.getByRole('button', { name: 'Sačuvaj mere' }).click();
+    await expect(page.locator('.measures')).toContainText('98,5 cm');
+    const saved = await rest(`measurements?user_id=eq.${account.id}&select=waist_cm,hips_cm,arm_cm`, { token: account.token });
+    expect(saved.rows).toEqual([{ waist_cm: 80, hips_cm: 98.5, arm_cm: null }]);
+
+    await rest('measurements', { token: account.token, method: 'POST', body: { user_id: account.id, date: '2000-01-01', waist_cm: 84 } });
+    await page.reload();
+    await expect(page.locator('.measures')).toContainText('−4 cm');
+  });
+
   test('Napredak: odrađen trening se vidi u istoriji', async ({ page }) => {
     await finishOnboarding(page);
     const session = await rest('sessions', { token: account.token, method: 'POST', body: { program_id: LAGANO, workout_id: GORNJI, duration_sec: 600 } });

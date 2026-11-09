@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { toast } from '../lib/toast.js';
-import { addWeight, getSessions, getWeights } from '../data/api.js';
+import { addWeight, getMeasurements, getSessions, getWeights, saveMeasurements } from '../data/api.js';
 import { formatDuration, formatNumber, formatShortDate } from '../lib/format.js';
 import WeightChart from '../components/WeightChart.jsx';
 import Icon from '../components/Icon.jsx';
@@ -11,15 +11,21 @@ import Icon from '../components/Icon.jsx';
 const PAGE_SIZE = 10;
 
 async function load() {
-  const [weights, sessions] = await Promise.all([getWeights(), getSessions()]);
-  return { weights, sessions };
+  const [weights, sessions, measurements] = await Promise.all([getWeights(), getSessions(), getMeasurements()]);
+  return { weights, sessions, measurements };
 }
 
+const MEASURES = [
+  { key: 'waist', label: 'Struk', min: 20, max: 300 },
+  { key: 'hips', label: 'Kukovi', min: 20, max: 300 },
+  { key: 'arm', label: 'Ruka', min: 10, max: 150 },
+];
+
 // Brojevi se ne boje kao dobri ili loši: −3 kg je uspeh za mršavljenje, a neuspeh za masu.
-function formatChange(diff) {
+function formatChange(diff, unit = 'kg') {
   const rounded = Math.round(diff * 10) / 10;
-  if (rounded === 0) return '±0 kg';
-  return `${rounded > 0 ? '+' : '−'}${formatNumber(Math.abs(rounded))} kg`;
+  if (rounded === 0) return `±0 ${unit}`;
+  return `${rounded > 0 ? '+' : '−'}${formatNumber(Math.abs(rounded))} ${unit}`;
 }
 
 function setsLabel(n) {
@@ -88,6 +94,8 @@ export default function Progress() {
         {weights.length === 0 && <p className="small muted" style={{ margin: 0 }}>Upiši prvu težinu dugmetom +.</p>}
       </div>
 
+      <Measurements rows={data.measurements} onSaved={reload} />
+
       {weights.length > 0 && (
         <History title="Istorija težine" items={weights} renderItem={(w) => (
           <div key={w.date} className="log-line">
@@ -106,6 +114,73 @@ export default function Progress() {
           <span className="muted" style={{ textAlign: 'right' }}>{formatDuration(s.durationSec || 0)} · {setsLabel(s.sets.length)}</span>
         </div>
       )} />
+    </div>
+  );
+}
+
+function Measurements({ rows, onSaved }) {
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ waist: '', hips: '', arm: '' });
+  const [saving, setSaving] = useState(false);
+
+  async function save(e) {
+    e.preventDefault();
+    if (saving) return;
+    const values = {};
+    for (const { key, min, max } of MEASURES) {
+      if (form[key].trim() === '') continue;
+      const cm = parseFloat(form[key].replace(',', '.'));
+      if (!Number.isFinite(cm) || cm < min || cm > max) return toast('Unesi ispravne mere');
+      values[key] = cm;
+    }
+    if (!Object.keys(values).length) return toast('Unesi bar jednu meru');
+    setSaving(true);
+    try {
+      await saveMeasurements(values);
+      setForm({ waist: '', hips: '', arm: '' });
+      setAdding(false);
+      toast('Mere upisane');
+      onSaved();
+    } catch {
+      toast('Mere nisu upisane. Proveri internet.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="col" style={{ gap: 10 }}>
+      <div className="section-head" style={{ alignItems: 'center' }}>
+        <span>Mere</span>
+        <button className="text-btn" aria-expanded={adding} onClick={() => setAdding(!adding)}>{adding ? 'Zatvori' : 'Upiši mere'}</button>
+      </div>
+
+      {adding && (
+        <form className="surface col" style={{ gap: 12 }} onSubmit={save}>
+          {MEASURES.map(({ key, label }) => (
+            <div key={key}>
+              <label className="field-label" htmlFor={`measure-${key}`}>{label} (cm)</label>
+              <input id={`measure-${key}`} className="text-input" style={{ background: 'var(--color-neutral-100)' }} inputMode="decimal"
+                value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+            </div>
+          ))}
+          <button className="pill-btn" disabled={saving}>{saving ? 'Čuvam…' : 'Sačuvaj mere'}</button>
+        </form>
+      )}
+
+      <div className="measures">
+        {MEASURES.map(({ key, label }) => {
+          const values = rows.map((r) => r[key]).filter((v) => v != null);
+          const latest = values.at(-1);
+          return (
+            <div key={key}>
+              <span className="stat-label">{label}</span>
+              <span className="measure-value">{latest == null ? '–' : `${formatNumber(latest)} cm`}</span>
+              {values.length > 1 && <span className="measure-change">{formatChange(latest - values[0], 'cm')}</span>}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

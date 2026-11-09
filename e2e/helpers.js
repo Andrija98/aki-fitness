@@ -57,6 +57,7 @@ export async function resetAccount(account) {
     rest(`sessions?user_id=eq.${id}`, { token, method: 'DELETE' }), // session_sets idu kaskadno
     rest(`weights?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`enrollments?user_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest(`measurements?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`profiles?id=eq.${id}`, {
       token,
       method: 'PATCH',

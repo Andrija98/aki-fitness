@@ -279,6 +279,24 @@ export async function addWeight(kg) {
   unwrap(await supabase.from('weights').upsert({ user_id: userId, date: today(), kg }));
 }
 
+// ---------- Mere ----------
+
+export async function getMeasurements() {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('measurements').select('date, waist_cm, hips_cm, arm_cm').eq('user_id', userId).order('date'));
+  return rows.map((r) => ({ date: r.date, waist: r.waist_cm, hips: r.hips_cm, arm: r.arm_cm }));
+}
+
+// values = { waist?, hips?, arm? }. Šaljemo samo unete mere: drugi upis istog dana ne briše one koje nisu unete.
+export async function saveMeasurements(values) {
+  const userId = await currentUserId();
+  const row = { user_id: userId, date: today() };
+  if (values.waist != null) row.waist_cm = values.waist;
+  if (values.hips != null) row.hips_cm = values.hips;
+  if (values.arm != null) row.arm_cm = values.arm;
+  unwrap(await supabase.from('measurements').upsert(row));
+}
+
 // ---------- Ostalo ----------
 
 function today() {

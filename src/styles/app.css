@@ -226,6 +226,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 3px 10px; border-radius: 999px; background: var(--color-text); color: var(--color-bg); font-size: 12px; font-weight: 700;
 }
 .history .log-line:last-child { border-bottom: 0; }
+.measures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.measures > div { padding: 12px; border-radius: 22px; background: var(--color-surface); display: flex; flex-direction: column; }
+.measure-value { font-family: var(--font-heading); font-size: 20px; }
+.measure-change { font-size: 12px; font-weight: 700; color: var(--color-neutral-700); }
 .chart-axis { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--color-neutral-600); }
 .delta-badge { padding: 5px 12px; border-radius: 999px; background: var(--color-accent-2-200); color: var(--color-accent-2-800); font-size: 13px; font-weight: 700; }
 

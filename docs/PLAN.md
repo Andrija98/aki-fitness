@@ -19,7 +19,7 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 3. Login ekran (email magic link ili email + lozinka)
 4. Prebaciti demo sadržaj u bazu (`docs/supabase-seed.sql`)
 5. Prepisati funkcije u `src/data/api.js` na Supabase pozive
-6. Ekran **Napredak**: grafikon težine i istorija treninga (urađeno), mere (sledeće)
+6. Ekran **Napredak**: grafikon težine, mere, istorija treninga
 7. Trenerov pravi sadržaj: YouTube (unlisted) linkovi za svaku vežbu
 
 ## Faza 3 — Trener i komunikacija
