@@ -1,0 +1,45 @@
+-- Početne namirnice iz USDA FoodData Central (SR Legacy), vrednosti na 100 g u sirovom / suvom stanju.
+-- Sve ulaze kao NEPROVERENE: trener ih pregleda u aplikaciji (Profil → Namirnice) i označava kao proverene.
+-- Kako se koristi: Supabase → SQL Editor → New query → nalepi ceo fajl → Run.
+-- Može više puta: postojeće namirnice (isti naziv) se ne diraju, pa trenerove izmene ostaju.
+
+insert into public.foods (name, food_group, kcal, protein_g, carbs_g, fat_g, meal_types, min_g, max_g, verified, source) values
+  ('Pileća prsa (sirova)', 'protein', 120, 22.5, 0, 2.6, array['rucak', 'vecera'], 100, 250, false, 'USDA FDC 171077'),
+  ('Ćureća prsa (sirova)', 'protein', 114, 23.7, 0.1, 1.5, array['rucak', 'vecera'], 100, 250, false, 'USDA FDC 171098'),
+  ('Juneći but, posni (sirov)', 'protein', 116, 23.4, 0, 2.5, array['rucak', 'vecera'], 100, 250, false, 'USDA FDC 171761'),
+  ('Losos (sirov)', 'protein', 208, 20.4, 0, 13.4, array['rucak', 'vecera'], 100, 250, false, 'USDA FDC 175167'),
+  ('Tunjevina u sopstvenom soku (oceđena)', 'protein', 128, 23.6, 0, 3, array['dorucak', 'rucak', 'vecera'], 50, 200, false, 'USDA FDC 175158'),
+  ('Bakalar (sirov)', 'protein', 82, 17.8, 0, 0.7, array['rucak', 'vecera'], 100, 300, false, 'USDA FDC 171955'),
+  ('Jaja (cela, sirova)', 'protein', 143, 12.6, 0.7, 9.5, array['dorucak', 'vecera'], 50, 200, false, 'USDA FDC 171287'),
+  ('Belance (sirovo)', 'protein', 52, 10.9, 0.7, 0.2, array['dorucak', 'vecera'], 30, 250, false, 'USDA FDC 172183'),
+  ('Grčki jogurt, nemasni', 'mlecni', 59, 10.2, 3.6, 0.4, array['dorucak', 'uzina1', 'uzina2'], 100, 300, false, 'USDA FDC 170894'),
+  ('Mladi sir, posni', 'mlecni', 72, 12.4, 2.7, 1, array['dorucak', 'uzina1', 'uzina2', 'vecera'], 50, 250, false, 'USDA FDC 173417'),
+  ('Mleko 1 %', 'mlecni', 42, 3.4, 5, 1, array['dorucak', 'uzina1', 'uzina2'], 100, 300, false, 'USDA FDC 170872'),
+  ('Kefir, posni', 'mlecni', 43, 3.8, 4.8, 1, array['dorucak', 'uzina1', 'uzina2'], 100, 300, false, 'USDA FDC 170904 (brend Lifeway, nema generičke vrednosti: proveriti)'),
+  ('Ovsene pahuljice', 'uh', 379, 13.2, 67.7, 6.5, array['dorucak'], 30, 100, false, 'USDA FDC 173904'),
+  ('Pirinač beli (suv)', 'uh', 365, 7.1, 80, 0.7, array['rucak', 'vecera'], 40, 120, false, 'USDA FDC 169756'),
+  ('Pirinač integralni (suv)', 'uh', 367, 7.5, 76.2, 3.2, array['rucak', 'vecera'], 40, 120, false, 'USDA FDC 169703'),
+  ('Testenina (suva)', 'uh', 371, 13, 74.7, 1.5, array['rucak'], 50, 120, false, 'USDA FDC 168927'),
+  ('Krompir (sirov)', 'uh', 77, 2.1, 17.5, 0.1, array['rucak', 'vecera'], 100, 400, false, 'USDA FDC 170026'),
+  ('Batat (sirov)', 'uh', 86, 1.6, 20.1, 0.1, array['rucak', 'vecera'], 100, 400, false, 'USDA FDC 168482'),
+  ('Hleb integralni', 'uh', 252, 12.4, 42.7, 3.5, array['dorucak', 'vecera'], 30, 120, false, 'USDA FDC 172688'),
+  ('Heljda (suva)', 'uh', 343, 13.2, 71.5, 3.4, array['rucak', 'vecera'], 40, 120, false, 'USDA FDC 170286'),
+  ('Kinoa (suva)', 'uh', 368, 14.1, 64.2, 6.1, array['rucak', 'vecera'], 40, 120, false, 'USDA FDC 168874'),
+  ('Maslinovo ulje', 'mast', 884, 0, 0, 100, array['dorucak', 'rucak', 'vecera'], 5, 20, false, 'USDA FDC 171413'),
+  ('Bademi', 'mast', 579, 21.2, 21.6, 49.9, array['dorucak', 'uzina1', 'uzina2'], 10, 40, false, 'USDA FDC 170567'),
+  ('Orasi', 'mast', 654, 15.2, 13.7, 65.2, array['dorucak', 'uzina1', 'uzina2'], 10, 40, false, 'USDA FDC 170187'),
+  ('Kikiriki puter', 'mast', 598, 22.2, 22.3, 51.4, array['dorucak', 'uzina2'], 10, 40, false, 'USDA FDC 172470'),
+  ('Avokado', 'mast', 160, 2, 8.5, 14.7, array['dorucak', 'rucak', 'vecera'], 30, 150, false, 'USDA FDC 171705'),
+  ('Brokoli', 'povrce', 34, 2.8, 6.6, 0.4, array['rucak', 'vecera'], 100, 300, false, 'USDA FDC 170379'),
+  ('Paradajz', 'povrce', 18, 0.9, 3.9, 0.2, array['dorucak', 'rucak', 'vecera'], 100, 300, false, 'USDA FDC 170457'),
+  ('Krastavac', 'povrce', 15, 0.7, 3.6, 0.1, array['dorucak', 'rucak', 'vecera'], 100, 300, false, 'USDA FDC 168409'),
+  ('Paprika crvena', 'povrce', 26, 1, 6, 0.3, array['dorucak', 'rucak', 'vecera'], 100, 300, false, 'USDA FDC 170108'),
+  ('Spanać', 'povrce', 23, 2.9, 3.6, 0.4, array['rucak', 'vecera'], 100, 300, false, 'USDA FDC 168462'),
+  ('Zelena salata', 'povrce', 15, 1.4, 2.9, 0.2, array['rucak', 'vecera'], 50, 200, false, 'USDA FDC 169249'),
+  ('Tikvice', 'povrce', 17, 1.2, 3.1, 0.3, array['rucak', 'vecera'], 100, 300, false, 'USDA FDC 169291'),
+  ('Banana', 'voce', 89, 1.1, 22.8, 0.3, array['dorucak', 'uzina1', 'uzina2'], 80, 200, false, 'USDA FDC 173944'),
+  ('Jabuka', 'voce', 52, 0.3, 13.8, 0.2, array['dorucak', 'uzina1', 'uzina2'], 100, 250, false, 'USDA FDC 171688'),
+  ('Borovnice', 'voce', 57, 0.7, 14.5, 0.3, array['dorucak', 'uzina1', 'uzina2'], 50, 200, false, 'USDA FDC 171711'),
+  ('Jagode', 'voce', 32, 0.7, 7.7, 0.3, array['dorucak', 'uzina1', 'uzina2'], 100, 300, false, 'USDA FDC 167762'),
+  ('Pomorandža', 'voce', 47, 0.9, 11.8, 0.1, array['dorucak', 'uzina1', 'uzina2'], 100, 250, false, 'USDA FDC 169097')
+on conflict (name) do nothing;
