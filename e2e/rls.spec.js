@@ -166,6 +166,13 @@ test('video vežbe može da menja samo trener', async () => {
   expect(after.rows).toEqual([{ video_url: current }]);
 });
 
+test('klijent ne može da menja raspored programa', async () => {
+  const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
+  expect(added.status).toBe(DENIED);
+  const removed = await rest(`program_schedule?program_id=eq.${LAGANO}`, { token: b.token, method: 'DELETE' });
+  expect(removed.rows).toEqual([]);
+});
+
 test('klijent ne može da menja sadržaj trenera', async () => {
   const created = await rest('programs', { token: b.token, method: 'POST', body: { title: 'hak', weeks: 1, per_week: 1 } });
   expect(created.status).toBe(DENIED);

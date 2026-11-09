@@ -242,6 +242,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 select.text-input { appearance: none; }
 .editor-move { background: var(--color-neutral-100); }
 .editor-move:disabled { opacity: 0.35; }
+.editor-textarea { min-height: 96px; border-radius: 24px; resize: vertical; }
+.editor-switch { gap: 14px; cursor: pointer; min-height: 56px; }
+.editor-switch input { width: 24px; height: 24px; flex: none; accent-color: var(--color-accent); }
 
 /* ---------- Uskoro ---------- */
 .soon { flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 14px; }

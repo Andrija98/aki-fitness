@@ -10,6 +10,7 @@ export const ACCOUNT_TRAINER = { email: 'e2e-trener@aki.test', passwordVar: 'E2E
 export const LAGANO = 'c0000000-0000-4000-8000-000000000001';
 export const SNAGA_KUCA = 'c0000000-0000-4000-8000-000000000002';
 export const GORNJI = 'b0000000-0000-4000-8000-000000000001';
+export const KARDIO = 'b0000000-0000-4000-8000-000000000003';
 export const SKLEKOVI = 'e0000000-0000-4000-8000-000000000004';
 
 const baseUrl = () => process.env.VITE_SUPABASE_URL;

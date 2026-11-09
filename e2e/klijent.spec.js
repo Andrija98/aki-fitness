@@ -2,7 +2,7 @@
 
 import { test, expect } from '@playwright/test';
 import {
-  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding,
+  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, KARDIO, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding,
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
 
@@ -276,6 +276,107 @@ test.describe('trener: treninzi', () => {
     await expect(page.getByRole('heading', { name: 'Izmena treninga' })).toBeVisible();
     await expect(page.getByRole('note')).toContainText('Ovaj trening koristi programa: 2.');
     await expect(page.getByLabel('Naziv treninga')).toHaveValue('Gornji deo tela');
+  });
+});
+
+test.describe('trener: programi', () => {
+  let trainer;
+  let draftId;
+  // Test programi nose prefiks E2E i nikad nisu stvarno objavljeni. Upise klijenta brišemo pre programa (strani ključ).
+  const removeTestPrograms = () => rest('programs?title=like.E2E*', { token: trainer.token, method: 'DELETE' });
+  const savedProgram = async (title) => {
+    const result = await rest(`programs?title=eq.${encodeURIComponent(title)}&select=published,weeks,program_schedule(position,workouts(title))`, { token: trainer.token });
+    expect(result.rows).toHaveLength(1);
+    const p = result.rows[0];
+    return { published: p.published, weeks: p.weeks, schedule: p.program_schedule.sort((x, y) => x.position - y.position).map((s) => s.workouts.title) };
+  };
+
+  test.beforeAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    trainer = await resetAccount(ACCOUNT_TRAINER);
+    await removeTestPrograms();
+    const draft = await rest('programs', { token: trainer.token, method: 'POST', body: { title: 'E2E Nacrt', weeks: 2, per_week: 2, location: 'kuca', level: 'Početnik', published: false } });
+    draftId = draft.rows[0].id;
+    await rest('program_schedule', { token: trainer.token, method: 'POST', body: { program_id: draftId, position: 1, workout_id: KARDIO } });
+  });
+
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await removeTestPrograms();
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('novi program: provere, raspored sa ponovljenim treningom, pa izmena bez viška pozicija', async ({ page }) => {
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto('/#/trener-programi');
+    await page.getByRole('button', { name: 'Novi program' }).click();
+    const save = page.getByRole('button', { name: 'Sačuvaj program' });
+    const alert = page.getByRole('alert');
+
+    await save.click();
+    await expect(alert).toHaveText('Unesi naziv programa.');
+    await page.getByLabel('Naziv programa').fill('E2E Program');
+    await page.getByLabel('Broj nedelja').fill('0');
+    await save.click();
+    await expect(alert).toHaveText('Broj nedelja mora biti od 1 do 52.');
+    await page.getByLabel('Broj nedelja').fill('6');
+    await save.click();
+    await expect(alert).toHaveText('Dodaj bar jedan trening u raspored.');
+
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Dodaj trening' }).click();
+    await page.getByLabel('Trening 1 u rasporedu').selectOption({ label: 'Gornji deo tela' });
+    await page.getByLabel('Trening 2 u rasporedu').selectOption({ label: 'Kardio krug' });
+    await page.getByLabel('Trening 3 u rasporedu').selectOption({ label: 'Gornji deo tela' });
+    await page.getByRole('button', { name: 'Pomeri gore trening 2' }).click();
+    await expect(page.getByRole('checkbox', { name: /Objavljen/ })).not.toBeChecked();
+    await save.click();
+
+    await expect(page.getByRole('button', { name: /E2E Program/ })).toContainText('Nacrt');
+    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['Kardio krug', 'Gornji deo tela', 'Gornji deo tela'] });
+
+    await page.getByRole('button', { name: /E2E Program/ }).click();
+    await page.getByRole('button', { name: 'Ukloni trening 1' }).click();
+    await save.click();
+    await expect(page.getByRole('button', { name: /E2E Program/ })).toContainText('2 u rasporedu');
+    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['Gornji deo tela', 'Gornji deo tela'] });
+  });
+
+  test('objavljivanje šalje published, a upozorenje broji klijente programa', async ({ page }) => {
+    // Klijent počinje nacrt preko API-ja, da upozorenje ima koga da broji.
+    const client = await resetAccount(ACCOUNT_A);
+    await rest('enrollments', { token: client.token, method: 'POST', body: { user_id: client.id, program_id: draftId } });
+
+    // Pravo objavljivanje bi na trenutak pokazalo test program pravim korisnicima, pa ga presrećemo.
+    let sent = null;
+    await page.route('**/rest/v1/programs*', (route) => {
+      if (route.request().method() !== 'PATCH') return route.fallback();
+      sent = route.request().postDataJSON();
+      return route.fulfill({ status: 200, json: [{ id: draftId }] });
+    });
+
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/trener-program/${draftId}`);
+    await expect(page.getByRole('note')).toContainText('Ovaj program trenutno radi klijenata: 1.');
+    await page.getByRole('checkbox', { name: /Objavljen/ }).check();
+    await page.getByRole('button', { name: 'Sačuvaj program' }).click();
+    await expect(page.getByRole('heading', { name: 'Uređivanje programa' })).toBeVisible();
+    expect(sent).toMatchObject({ title: 'E2E Nacrt', published: true });
+  });
+
+  test('klijent ne vidi nacrt ni u aplikaciji ni preko API-ja', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    const viaApi = await rest('programs?title=like.E2E*&select=id', { token: client.token });
+    expect(viaApi.rows).toEqual([]);
+
+    await loginUi(page, ACCOUNT_A);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Treninzi' }).click();
+    await expect(page.getByRole('button', { name: /^Lagano do forme/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /E2E/ })).toHaveCount(0);
   });
 });
 

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js';
 
 // Programi iz docs/supabase-seed.sql koji se predlažu posle onboardinga.
 const SUGGESTED_PROGRAMS = {
+  lagano: 'c0000000-0000-4000-8000-000000000001',
   snagaKuca: 'c0000000-0000-4000-8000-000000000002',
   masa: 'c0000000-0000-4000-8000-000000000003',
   pauza: 'c0000000-0000-4000-8000-000000000004',
@@ -36,6 +37,7 @@ function toProgram(row) {
     location: row.location,
     level: row.level,
     tone: row.tone,
+    published: row.published,
     schedule: [...row.program_schedule].sort(byPosition).map((s) => s.workout_id),
   };
 }
@@ -87,8 +89,9 @@ export async function updatePassword(password) {
 
 const PROGRAM_FIELDS = '*, program_schedule(position, workout_id)';
 
+// Samo objavljeni, abecedno. RLS klijentu ionako krije nacrte, a filter čuva i trenera od nacrta u njegovoj listi.
 export async function getPrograms() {
-  const rows = unwrap(await supabase.from('programs').select(PROGRAM_FIELDS).order('id'));
+  const rows = unwrap(await supabase.from('programs').select(PROGRAM_FIELDS).eq('published', true).order('title'));
   return rows.map(toProgram);
 }
 
@@ -200,6 +203,57 @@ export async function saveWorkout(workout) {
   return workoutId;
 }
 
+// ---------- Trener: programi ----------
+
+export async function getProgramsAdmin() {
+  const rows = unwrap(await supabase.from('programs').select(PROGRAM_FIELDS).order('title'));
+  return rows.map(toProgram);
+}
+
+// Koliko klijenata trenutno radi program: njih pogađaju izmene rasporeda i skidanje objave.
+export async function getProgramClientCount(programId) {
+  const { count, error } = await supabase.from('enrollments')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('program_id', programId)
+    .eq('active', true);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// program = { id?, title, description, weeks, perWeek, location, level, tone, published, schedule: [workoutId] }
+// Raspored se prepisuje na licu mesta (upsert po poziciji), pa se brišu pozicije koje su višak.
+export async function saveProgram(program) {
+  const fields = {
+    title: program.title,
+    description: program.description,
+    weeks: program.weeks,
+    per_week: program.perWeek,
+    location: program.location,
+    level: program.level,
+    tone: program.tone,
+    published: program.published,
+  };
+  const isNew = !program.id;
+  let programId = program.id;
+  if (isNew) {
+    programId = unwrap(await supabase.from('programs').insert(fields).select('id').single()).id;
+  } else {
+    const rows = unwrap(await supabase.from('programs').update(fields).eq('id', programId).select('id'));
+    if (!rows.length) throw new Error('Program nije sačuvan.');
+  }
+
+  const { error } = await supabase.from('program_schedule').upsert(
+    program.schedule.map((workoutId, i) => ({ program_id: programId, position: i + 1, workout_id: workoutId })),
+    { onConflict: 'program_id,position' },
+  );
+  if (error) {
+    if (isNew) await supabase.from('programs').delete().eq('id', programId); // da ponovni pokušaj ne napravi duplikat
+    throw error;
+  }
+  unwrap(await supabase.from('program_schedule').delete().eq('program_id', programId).gt('position', program.schedule.length));
+  return programId;
+}
+
 // ---------- Korisnik ----------
 
 // Trigger pravi prazan red pri otvaranju naloga, pa je "nema profila" = onboarding nije završen (goal je prazan).
@@ -241,7 +295,7 @@ export async function saveProfile(profile) {
 // Prvi predlog programa na osnovu onboardinga.
 async function suggestProgram(profile) {
   const programs = await getPrograms();
-  let id = null;
+  let id = SUGGESTED_PROGRAMS.lagano; // eksplicitno, jer je lista abecedna
   if (profile.location === 'teretana' && profile.level !== 'pocetnik') id = SUGGESTED_PROGRAMS.masa;
   else if (profile.goal === 'kondicija') id = SUGGESTED_PROGRAMS.pauza;
   else if (profile.goal === 'snaga') id = SUGGESTED_PROGRAMS.snagaKuca;
