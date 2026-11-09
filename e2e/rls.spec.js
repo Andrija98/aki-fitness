@@ -141,6 +141,15 @@ test('klijent ne može da doda novu vežbu', async () => {
   expect(created.status).toBe(DENIED);
 });
 
+test('klijent ne može da doda trening ni da menja vežbe u treningu', async () => {
+  const workout = await rest('workouts', { token: b.token, method: 'POST', body: { title: 'E2E hak' } });
+  expect(workout.status).toBe(DENIED);
+  const item = await rest('workout_items', { token: b.token, method: 'POST', body: { workout_id: GORNJI, exercise_id: SKLEKOVI, position: 99, sets: 1, reps: 1 } });
+  expect(item.status).toBe(DENIED);
+  const removed = await rest(`workout_items?workout_id=eq.${GORNJI}`, { token: b.token, method: 'DELETE' });
+  expect(removed.rows).toEqual([]);
+});
+
 test('video vežbe može da menja samo trener', async () => {
   const before = await rest(`exercises?id=eq.${SKLEKOVI}&select=video_url`, { token: b.token });
   expect(before.rows).toHaveLength(1);

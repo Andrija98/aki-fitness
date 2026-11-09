@@ -17,6 +17,8 @@ import WorkoutSession from './screens/WorkoutSession.jsx';
 import ClientDetail from './screens/ClientDetail.jsx';
 import Clients from './screens/Clients.jsx';
 import Exercises from './screens/Exercises.jsx';
+import WorkoutEditor from './screens/WorkoutEditor.jsx';
+import WorkoutsAdmin from './screens/WorkoutsAdmin.jsx';
 import Profile from './screens/Profile.jsx';
 import Progress from './screens/Progress.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
@@ -79,13 +81,15 @@ function AuthedApp() {
     case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
     case 'napredak': screen = <Progress />; break;
     case 'vezbe': screen = isTrainer ? <Exercises /> : <Home profile={profile} />; break;
+    case 'trener-treninzi': screen = isTrainer ? <WorkoutsAdmin /> : <Home profile={profile} />; break;
+    case 'trener-trening': screen = isTrainer ? <WorkoutEditor workoutId={p1} /> : <Home profile={profile} />; break;
     case 'klijenti': screen = isTrainer ? <Clients /> : <Home profile={profile} />; break;
     case 'klijent': screen = isTrainer ? <ClientDetail clientId={p1} /> : <Home profile={profile} />; break;
     case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;
     default: screen = <Home profile={profile} />;
   }
 
-  const tab = TAB_FOR_ROUTE[route.name] ?? (route.name === 'trening' || route.name === 'lozinka' ? null : 'pocetna');
+  const tab = TAB_FOR_ROUTE[route.name] ?? (['trening', 'lozinka', 'trener-trening'].includes(route.name) ? null : 'pocetna');
 
   return (
     <>

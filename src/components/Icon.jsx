@@ -12,6 +12,8 @@ const PATHS = {
   check: <path d="M20 6 9 17l-5-5" />,
   plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
   chevronLeft: <path d="m15 18-6-6 6-6" />,
+  chevronUp: <path d="m18 15-6-6-6 6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
   skipBack: <><path d="M19 20 9 12l10-8v16Z" /><path d="M5 19V5" /></>,
   skipForward: <><path d="m5 4 10 8-10 8V4Z" /><path d="M19 5v14" /></>,

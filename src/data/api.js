@@ -148,6 +148,58 @@ export async function setExerciseVideo(id, url) {
   if (!rows.length) throw new Error('Video nije sačuvan.');
 }
 
+// ---------- Trener: treninzi ----------
+
+export async function getWorkoutsOverview() {
+  const rows = unwrap(await supabase.from('workouts').select('id, title, minutes, equipment, workout_items(id), program_schedule(program_id)').order('title'));
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    minutes: r.minutes,
+    itemCount: r.workout_items.length,
+    programCount: new Set(r.program_schedule.map((s) => s.program_id)).size,
+  }));
+}
+
+// U koliko programa je trening: izmene tada odmah vide klijenti tih programa.
+export async function getWorkoutUsage(id) {
+  const rows = unwrap(await supabase.from('program_schedule').select('program_id').eq('workout_id', id));
+  return new Set(rows.map((r) => r.program_id)).size;
+}
+
+// workout = { id?, title, minutes, equipment, items: [{ exerciseId, sets, reps, seconds, kg, rest }] }
+// Prvo upisujemo nove stavke, pa brišemo stare: klijent nikad ne vidi prazan trening.
+// Stare stavke čitamo tik pre upisa, pa ponovno čuvanje posle prekida samo ispravi višak.
+export async function saveWorkout(workout) {
+  const fields = { title: workout.title, minutes: workout.minutes, equipment: workout.equipment };
+  const isNew = !workout.id;
+  let workoutId = workout.id;
+  if (isNew) {
+    workoutId = unwrap(await supabase.from('workouts').insert(fields).select('id').single()).id;
+  } else {
+    const rows = unwrap(await supabase.from('workouts').update(fields).eq('id', workoutId).select('id'));
+    if (!rows.length) throw new Error('Trening nije sačuvan.');
+  }
+
+  const old = unwrap(await supabase.from('workout_items').select('id').eq('workout_id', workoutId));
+  const { error } = await supabase.from('workout_items').insert(workout.items.map((it, i) => ({
+    workout_id: workoutId,
+    exercise_id: it.exerciseId,
+    position: i + 1,
+    sets: it.sets,
+    reps: it.reps,
+    seconds: it.seconds,
+    kg: it.kg,
+    rest_sec: it.rest,
+  })));
+  if (error) {
+    if (isNew) await supabase.from('workouts').delete().eq('id', workoutId); // da ponovni pokušaj ne napravi duplikat
+    throw error;
+  }
+  if (old.length) unwrap(await supabase.from('workout_items').delete().in('id', old.map((r) => r.id)));
+  return workoutId;
+}
+
 // ---------- Korisnik ----------
 
 // Trigger pravi prazan red pri otvaranju naloga, pa je "nema profila" = onboarding nije završen (goal je prazan).

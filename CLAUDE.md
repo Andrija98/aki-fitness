@@ -40,7 +40,7 @@ e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js 
 ```
 
 ## Rute
-`#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id` (poslednje tri samo trener), `#/ciljevi`,
+`#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id`, `#/trener-treninzi`, `#/trener-trening/:id|novi` (poslednjih pet samo trener), `#/ciljevi`,
 `#/napredak`, `#/ishrana`, `#/poruke` (poslednje dve su "Stiže uskoro").
 
 ## Pravila
