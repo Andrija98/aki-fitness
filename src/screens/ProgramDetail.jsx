@@ -6,6 +6,7 @@ import { toast } from '../lib/toast.js';
 import { getProgramProgress, getWorkout, getActiveProgramId, setActiveProgram } from '../data/api.js';
 import { Striped } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 async function load(programId) {
   const progress = await getProgramProgress(programId);
@@ -17,7 +18,8 @@ async function load(programId) {
 }
 
 export default function ProgramDetail({ programId }) {
-  const { data, reload } = useData(() => load(programId), [programId]);
+  const { data, error, reload } = useData(() => load(programId), [programId]);
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
   if (!data.progress) return <div className="screen"><p>Program nije pronađen.</p></div>;
 
@@ -27,7 +29,11 @@ export default function ProgramDetail({ programId }) {
   const nextIndex = progress.done % program.schedule.length;
 
   async function activate() {
-    await setActiveProgram(program.id);
+    try {
+      await setActiveProgram(program.id);
+    } catch {
+      return toast('Program nije aktiviran. Proveri internet.');
+    }
     toast('Program aktiviran');
     reload();
   }

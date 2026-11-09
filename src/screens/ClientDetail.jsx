@@ -5,10 +5,12 @@ import { back } from '../lib/router.js';
 import { getClient } from '../data/api.js';
 import { GOAL_LABEL } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 import Progress from './Progress.jsx';
 
 export default function ClientDetail({ clientId }) {
-  const { data: client, loading } = useData(() => getClient(clientId), [clientId]);
+  const { data: client, loading, error, reload } = useData(() => getClient(clientId), [clientId]);
+  if (error) return <LoadError onRetry={reload} />; // inače bi pad mreže izgledao kao "Klijent nije pronađen"
   if (loading) return null;
   if (!client) return <div className="screen"><p>Klijent nije pronađen.</p></div>;
 

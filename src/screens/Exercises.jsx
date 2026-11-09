@@ -8,12 +8,14 @@ import { toast } from '../lib/toast.js';
 import { createExercise, getExercises, setExerciseVideo, updateExercise } from '../data/api.js';
 import { youtubeId } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 const SAVE_ERROR = 'Nije sačuvano. Proveri internet i pokušaj ponovo.';
 
 export default function Exercises() {
-  const { data: exercises, reload } = useData(getExercises);
+  const { data: exercises, error, reload } = useData(getExercises);
   const [adding, setAdding] = useState(false);
+  if (error) return <LoadError onRetry={reload} />;
   if (!exercises) return null;
 
   const withVideo = exercises.filter((e) => e.videoUrl).length;

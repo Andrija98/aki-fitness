@@ -7,6 +7,7 @@ import { back, navigate } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
 import { getExercises, getWorkout, getWorkoutUsage, saveWorkout } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 let nextKey = 0;
 const newKey = () => `item-${nextKey++}`;
@@ -25,7 +26,8 @@ const wholeNumber = (v) => (/^\d+$/.test(String(v).trim()) ? Number(v) : NaN);
 const decimal = (v) => Number(String(v).trim().replace(',', '.'));
 
 export default function WorkoutEditor({ workoutId }) {
-  const { data } = useData(() => load(workoutId), [workoutId]);
+  const { data, error, reload } = useData(() => load(workoutId), [workoutId]);
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
   if (!data.isNew && !data.workout) return <div className="screen"><p>Trening nije pronađen.</p></div>;
   return <Editor {...data} />;

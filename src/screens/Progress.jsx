@@ -7,6 +7,7 @@ import { addWeight, getMeasurements, getSessions, getWeights, saveMeasurements }
 import { formatDuration, formatNumber, formatShortDate } from '../lib/format.js';
 import WeightChart from '../components/WeightChart.jsx';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 const PAGE_SIZE = 10;
 
@@ -36,10 +37,11 @@ function setsLabel(n) {
 }
 
 export default function Progress({ userId, readOnly = false, header }) {
-  const { data, reload } = useData(() => load(userId), [userId]);
+  const { data, error, reload } = useData(() => load(userId), [userId]);
   const [adding, setAdding] = useState(false);
   const [weight, setWeight] = useState('');
   const [saving, setSaving] = useState(false);
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
 
   const weights = [...data.weights].reverse();

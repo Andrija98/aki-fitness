@@ -380,6 +380,26 @@ test.describe('trener: programi', () => {
   });
 });
 
+test.describe('trener: klijent bez mreže', () => {
+  test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
+
+  test('pad mreže ne izgleda kao "Klijent nije pronađen"', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+
+    await page.route('**/rest/v1/**', (route) => route.abort());
+    await page.goto(`/#/klijent/${client.id}`);
+    await expect(page.getByRole('heading', { name: 'Nema veze' })).toBeVisible({ timeout: 15_000 }); // posle Supabase ponavljanja
+    await expect(page.getByText('Klijent nije pronađen.')).toHaveCount(0);
+
+    await page.unroute('**/rest/v1/**');
+    await page.getByRole('button', { name: 'Pokušaj ponovo' }).click();
+    await expect(page.getByText('Cilj nije izabran')).toBeVisible();
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 
@@ -489,6 +509,65 @@ test.describe('prijavljen klijent', () => {
     await expect(loginHeading(page)).toBeVisible();
     await page.reload();
     await expect(loginHeading(page)).toBeVisible();
+  });
+
+  // Odbijamo samo zahteve ka bazi; setOffline bi isključio i dev server.
+  // Supabase sam ponavlja neuspela čitanja 3 puta (1 + 2 + 4 s), pa greška stiže tek posle ~7 s.
+  const DATA = '**/rest/v1/**';
+  const AFTER_RETRIES = { timeout: 15_000 };
+  const cutNetwork = (page) => page.route(DATA, (route) => route.abort());
+  const noConnection = (page) => page.getByRole('heading', { name: 'Nema veze' });
+
+  test('bez mreže: ekran kaže Nema veze i oporavlja se dugmetom i sam od sebe', async ({ page }) => {
+    await finishOnboarding(page);
+
+    await cutNetwork(page);
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    await expect(noConnection(page)).toBeVisible(AFTER_RETRIES);
+    await page.unroute(DATA);
+    await page.getByRole('button', { name: 'Pokušaj ponovo' }).click();
+    await expect(page.getByRole('heading', { name: 'Napredak' })).toBeVisible();
+
+    await cutNetwork(page);
+    await page.getByRole('link', { name: 'Početna' }).click();
+    await expect(noConnection(page)).toBeVisible(AFTER_RETRIES);
+    await page.unroute(DATA);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();
+  });
+
+  test('bez mreže: upisi daju poruku, a posle uspevaju', async ({ page }) => {
+    // Kraj onboardinga
+    await page.getByLabel('Ime').fill('Tester');
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Nastavi' }).click();
+    await cutNetwork(page);
+    await page.getByRole('button', { name: 'Kreni sa treningom' }).click();
+    // Kraj onboardinga prvo čita profil, pa i ovde čekamo ponavljanja.
+    await expect(page.getByRole('alert')).toHaveText('Nije sačuvano. Proveri internet i pokušaj ponovo.', AFTER_RETRIES);
+    await page.unroute(DATA);
+    await page.getByRole('button', { name: 'Kreni sa treningom' }).click();
+    await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();
+
+    // Težina u Profilu
+    await page.getByRole('link', { name: 'Profil' }).click();
+    await page.getByLabel('Težina danas u kilogramima').fill('80');
+    await cutNetwork(page);
+    await page.getByRole('button', { name: 'Upiši težinu' }).click();
+    await expect(page.getByText('Težina nije upisana. Proveri internet.')).toBeVisible();
+    await page.unroute(DATA);
+    await page.getByRole('button', { name: 'Upiši težinu' }).click();
+    await expect(page.getByText(/poslednje: 80/)).toBeVisible();
+
+    // Aktiviranje programa
+    await page.getByRole('link', { name: 'Treninzi' }).click();
+    await page.getByRole('button', { name: /Snaga bez teretane/ }).click();
+    await expect(page.getByRole('button', { name: 'Izaberi ovaj program' })).toBeVisible();
+    await cutNetwork(page);
+    await page.getByRole('button', { name: 'Izaberi ovaj program' }).click();
+    await expect(page.getByText('Program nije aktiviran. Proveri internet.')).toBeVisible();
+    await page.unroute(DATA);
+    await page.getByRole('button', { name: 'Izaberi ovaj program' }).click();
+    await expect(page.getByRole('button', { name: /Počni sledeći trening/ })).toBeVisible();
   });
 
   test('klijent ne vidi unos videa i ne može na tu adresu', async ({ page }) => {

@@ -32,13 +32,24 @@ export default function Onboarding({ initial, onDone }) {
     weightKg: initial?.weightKg ?? '',
   });
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const canContinue = step !== 1 || form.name.trim().length > 0;
 
   async function next() {
     if (step < STEPS) return setStep(step + 1);
+    if (saving) return;
     const weight = parseFloat(String(form.weightKg).replace(',', '.'));
-    await saveProfile({ ...form, name: form.name.trim(), weightKg: Number.isFinite(weight) ? weight : null });
+    // Poruka stoji na ekranu, a ne u toast-u: toast se ne prikazuje dok je onboarding otvoren.
+    setSaving(true);
+    setSaveError('');
+    try {
+      await saveProfile({ ...form, name: form.name.trim(), weightKg: Number.isFinite(weight) ? weight : null });
+    } catch {
+      setSaveError('Nije sačuvano. Proveri internet i pokušaj ponovo.');
+      return setSaving(false);
+    }
     if (editing) {
       toast('Ciljevi sačuvani');
       navigate('profil');
@@ -122,7 +133,8 @@ export default function Onboarding({ initial, onDone }) {
       </div>
 
       <div className="ob-footer">
-        <button className="pill-btn" disabled={!canContinue} onClick={next}>
+        {saveError && <p className="login-error" role="alert">{saveError}</p>}
+        <button className="pill-btn" disabled={!canContinue || saving} onClick={next}>
           {step < STEPS ? 'Nastavi' : editing ? 'Sačuvaj' : 'Kreni sa treningom'}
         </button>
         {step === 4 && !editing && (

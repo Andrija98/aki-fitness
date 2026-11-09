@@ -4,9 +4,11 @@ import { useData } from '../lib/useData.js';
 import { back, navigate } from '../lib/router.js';
 import { getProgramsAdmin } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 export default function ProgramsAdmin() {
-  const { data: programs } = useData(getProgramsAdmin);
+  const { data: programs, error, reload } = useData(getProgramsAdmin);
+  if (error) return <LoadError onRetry={reload} />;
   if (!programs) return null;
 
   return (

@@ -4,6 +4,7 @@ import { useData } from '../lib/useData.js';
 import { back, navigate } from '../lib/router.js';
 import { getWorkoutsOverview } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 function exercisesLabel(n) {
   const lastDigit = n % 10;
@@ -14,7 +15,8 @@ function exercisesLabel(n) {
 }
 
 export default function WorkoutsAdmin() {
-  const { data: workouts } = useData(getWorkoutsOverview);
+  const { data: workouts, error, reload } = useData(getWorkoutsOverview);
+  if (error) return <LoadError onRetry={reload} />;
   if (!workouts) return null;
 
   return (

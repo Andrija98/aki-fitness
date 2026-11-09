@@ -5,13 +5,15 @@ import { back, navigate } from '../lib/router.js';
 import { getClients } from '../data/api.js';
 import { GOAL_LABEL, formatDaysAgo } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 function sessionsLabel(n) {
   return `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'trening' : 'treninga'}`;
 }
 
 export default function Clients() {
-  const { data: clients } = useData(getClients);
+  const { data: clients, error, reload } = useData(getClients);
+  if (error) return <LoadError onRetry={reload} />;
   if (!clients) return null;
 
   return (

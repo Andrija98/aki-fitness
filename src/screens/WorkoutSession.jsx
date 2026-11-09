@@ -11,6 +11,7 @@ import { formatClock, formatDuration, formatNumber } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import { Striped, VideoPlayer } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 async function load(workoutId) {
   const workout = await getWorkout(workoutId);
@@ -27,7 +28,7 @@ const num = (v) => {
 };
 
 export default function WorkoutSession({ programId, workoutId }) {
-  const { data } = useData(() => load(workoutId), [workoutId]);
+  const { data, error, reload } = useData(() => load(workoutId), [workoutId]);
   const [exIndex, setExIndex] = useState(0);
   const [setIndex, setSetIndex] = useState(0);
   const [logged, setLogged] = useState([]);
@@ -68,6 +69,7 @@ export default function WorkoutSession({ programId, workoutId }) {
     return () => clearTimeout(t);
   }, [rest]);
 
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
   if (!workout) return <div className="screen screen--no-tabbar"><p>Trening nije pronađen.</p></div>;
   if (finished) return <Summary session={finished} workout={workout} />;

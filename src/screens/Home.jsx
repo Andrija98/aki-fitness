@@ -7,6 +7,7 @@ import { formatLongDate, currentWeek, dateKey, DAY_LETTERS, formatNumber } from 
 import { TRAINER_NAME } from '../config.js';
 import { Striped } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 async function loadHome() {
   const programId = await getActiveProgramId();
@@ -17,7 +18,8 @@ async function loadHome() {
 }
 
 export default function Home({ profile }) {
-  const { data } = useData(loadHome);
+  const { data, error, reload } = useData(loadHome);
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
   const { progress, workout, sessions, weights } = data;
 

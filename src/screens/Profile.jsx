@@ -8,6 +8,7 @@ import { getSessions, getWeights, addWeight, signOut } from '../data/api.js';
 import { dayStreak, formatDuration, formatNumber } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 async function load() {
   const [sessions, weights] = await Promise.all([getSessions(), getWeights()]);
@@ -15,8 +16,9 @@ async function load() {
 }
 
 export default function Profile({ profile }) {
-  const { data, reload } = useData(load);
+  const { data, error, reload } = useData(load);
   const [weight, setWeight] = useState('');
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
 
   const { sessions, weights } = data;
@@ -28,7 +30,11 @@ export default function Profile({ profile }) {
     e.preventDefault();
     const kg = parseFloat(weight.replace(',', '.'));
     if (!Number.isFinite(kg) || kg < 20 || kg > 400) return toast('Unesi ispravnu težinu');
-    await addWeight(kg);
+    try {
+      await addWeight(kg);
+    } catch {
+      return toast('Težina nije upisana. Proveri internet.');
+    }
     setWeight('');
     toast('Težina upisana');
     reload();

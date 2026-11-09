@@ -7,6 +7,7 @@ import { useToast, toast } from './lib/toast.js';
 import { useAuth } from './lib/useAuth.js';
 import { getProfile } from './data/api.js';
 import TabBar from './components/TabBar.jsx';
+import LoadError from './components/LoadError.jsx';
 import Login from './screens/Login.jsx';
 import NewPassword from './screens/NewPassword.jsx';
 import Onboarding from './screens/Onboarding.jsx';
@@ -57,15 +58,7 @@ function AuthedApp() {
   if (loading) return null;
 
   // Bez ovoga bi pad mreže izgledao kao "nema profila" i klijent bi dobio onboarding.
-  if (error) {
-    return (
-      <div className="screen screen--no-tabbar">
-        <h1 className="ob-title">Nema veze</h1>
-        <p className="muted" style={{ margin: 0 }}>Podaci nisu učitani. Proveri internet i pokušaj ponovo.</p>
-        <button className="pill-btn" style={{ marginTop: 'auto' }} onClick={reload}>Pokušaj ponovo</button>
-      </div>
-    );
-  }
+  if (error) return <LoadError onRetry={reload} />;
 
   if (!profile || route.name === 'ciljevi') {
     return <Onboarding initial={profile} onDone={reload} />;

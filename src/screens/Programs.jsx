@@ -6,6 +6,7 @@ import { navigate } from '../lib/router.js';
 import { getPrograms, getActiveProgramId, getProgramProgress } from '../data/api.js';
 import { Striped } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 const FILTERS = [['sve', 'Sve'], ['kuca', 'Kod kuće'], ['teretana', 'Teretana']];
 const LOCATION_LABEL = { kuca: 'Kod kuće', teretana: 'Teretana' };
@@ -17,9 +18,10 @@ async function load() {
 }
 
 export default function Programs() {
-  const { data } = useData(load);
+  const { data, error, reload } = useData(load);
   const [filter, setFilter] = useState('sve');
   const [query, setQuery] = useState('');
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
 
   const q = query.trim().toLowerCase();

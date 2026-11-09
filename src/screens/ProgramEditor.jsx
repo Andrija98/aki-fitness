@@ -7,6 +7,7 @@ import { back, navigate } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
 import { getProgram, getProgramClientCount, getWorkoutsOverview, saveProgram } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
+import LoadError from '../components/LoadError.jsx';
 
 const LOCATIONS = [['kuca', 'Kod kuće'], ['teretana', 'Teretana']];
 const LEVELS = ['Početnik', 'Srednji', 'Napredni', 'Svi nivoi'];
@@ -27,7 +28,8 @@ async function load(programId) {
 }
 
 export default function ProgramEditor({ programId }) {
-  const { data } = useData(() => load(programId), [programId]);
+  const { data, error, reload } = useData(() => load(programId), [programId]);
+  if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
   if (!data.isNew && !data.program) return <div className="screen"><p>Program nije pronađen.</p></div>;
   return <Editor {...data} />;
