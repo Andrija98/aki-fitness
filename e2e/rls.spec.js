@@ -1,0 +1,90 @@
+// Bezbednost baze: nalog B direktno gađa API, mimo filtera iz aplikacije.
+// Ekran ovo ne može da proveri, jer api.js sam filtrira po user_id.
+
+import { test, expect } from '@playwright/test';
+import { ACCOUNT_A, ACCOUNT_B, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount } from './helpers.js';
+
+const DENIED = 403;
+let a;
+let b;
+let sessionId;
+
+test.beforeAll(async () => {
+  a = await resetAccount(ACCOUNT_A);
+  b = await apiLogin(ACCOUNT_B);
+
+  await rest(`profiles?id=eq.${a.id}`, { token: a.token, method: 'PATCH', body: { name: 'Vlasnik' } });
+  await rest('weights', { token: a.token, method: 'POST', body: { user_id: a.id, date: '2000-01-02', kg: 70 } });
+  const session = await rest('sessions', { token: a.token, method: 'POST', body: { program_id: LAGANO, workout_id: GORNJI, duration_sec: 60 } });
+  sessionId = session.rows[0].id;
+  await rest('session_sets', { token: a.token, method: 'POST', body: { session_id: sessionId, exercise_id: SKLEKOVI, set_no: 1, reps: 10 } });
+  await rest('enrollments', { token: a.token, method: 'POST', body: { user_id: a.id, program_id: LAGANO } });
+});
+
+test.afterAll(() => resetAccount(ACCOUNT_A));
+
+// Vlasnik mora da vidi podatke; inače bi "0 redova" kod napadača bilo lažno zeleno.
+test('kontrola: vlasnik vidi svoje podatke', async () => {
+  for (const path of [`profiles?id=eq.${a.id}`, `sessions?user_id=eq.${a.id}`, `session_sets?session_id=eq.${sessionId}`, `weights?user_id=eq.${a.id}`, `enrollments?user_id=eq.${a.id}`]) {
+    const result = await rest(path, { token: a.token });
+    expect(result.rows, path).toHaveLength(1);
+  }
+});
+
+test('drugi klijent ne može da čita tuđe podatke', async () => {
+  for (const path of [`profiles?id=eq.${a.id}`, `sessions?user_id=eq.${a.id}`, `session_sets?session_id=eq.${sessionId}`, `weights?user_id=eq.${a.id}`, `enrollments?user_id=eq.${a.id}`]) {
+    const result = await rest(path, { token: b.token });
+    expect(result.status, path).toBe(200);
+    expect(result.rows, path).toEqual([]);
+  }
+});
+
+test('drugi klijent bez filtera vidi samo svoj profil', async () => {
+  const result = await rest('profiles?select=id', { token: b.token });
+  expect(result.rows).toEqual([{ id: b.id }]);
+});
+
+test('neprijavljen korisnik ne dobija nijedan red', async () => {
+  for (const table of ['profiles', 'sessions', 'session_sets', 'weights', 'enrollments', 'programs', 'exercises']) {
+    const result = await rest(`${table}?select=*`);
+    if (result.status === 200) expect(result.rows, table).toEqual([]);
+    else expect(result.status, table).toBeGreaterThanOrEqual(400);
+  }
+});
+
+test('drugi klijent ne može da upiše podatke u tuđe ime', async () => {
+  const weight = await rest('weights', { token: b.token, method: 'POST', body: { user_id: a.id, date: '2000-01-01', kg: 99 } });
+  expect(weight.status).toBe(DENIED);
+  const session = await rest('sessions', { token: b.token, method: 'POST', body: { user_id: a.id, duration_sec: 1 } });
+  expect(session.status).toBe(DENIED);
+  const set = await rest('session_sets', { token: b.token, method: 'POST', body: { session_id: sessionId, exercise_id: SKLEKOVI, set_no: 2, reps: 1 } });
+  expect(set.status).toBe(DENIED);
+  const enrollment = await rest('enrollments', { token: b.token, method: 'POST', body: { user_id: a.id, program_id: LAGANO } });
+  expect(enrollment.status).toBe(DENIED);
+});
+
+test('drugi klijent ne može da menja ni briše tuđe redove', async () => {
+  const profile = await rest(`profiles?id=eq.${a.id}`, { token: b.token, method: 'PATCH', body: { name: 'hak' } });
+  expect(profile.rows).toEqual([]);
+  const removed = await rest(`sessions?id=eq.${sessionId}`, { token: b.token, method: 'DELETE' });
+  expect(removed.rows).toEqual([]);
+
+  const own = await rest(`profiles?id=eq.${a.id}&select=name`, { token: a.token });
+  expect(own.rows).toEqual([{ name: 'Vlasnik' }]);
+  const stillThere = await rest(`sessions?id=eq.${sessionId}&select=id`, { token: a.token });
+  expect(stillThere.rows).toHaveLength(1);
+});
+
+test('klijent ne može sam sebi da da ulogu trenera', async () => {
+  const result = await rest(`profiles?id=eq.${b.id}`, { token: b.token, method: 'PATCH', body: { role: 'trainer' } });
+  expect(result.status).toBe(DENIED);
+  const role = await rest(`profiles?id=eq.${b.id}&select=role`, { token: b.token });
+  expect(role.rows).toEqual([{ role: 'client' }]);
+});
+
+test('klijent ne može da menja sadržaj trenera', async () => {
+  const created = await rest('programs', { token: b.token, method: 'POST', body: { title: 'hak', weeks: 1, per_week: 1 } });
+  expect(created.status).toBe(DENIED);
+  const changed = await rest(`programs?id=eq.${LAGANO}`, { token: b.token, method: 'PATCH', body: { published: true } });
+  expect(changed.rows).toEqual([]);
+});

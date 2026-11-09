@@ -14,6 +14,7 @@ radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
 - `npm run dev`: razvojni server sa hot reload-om (`--host`, pa radi i sa telefona u istoj mreži)
 - `npm run build`: produkcijski build u `dist/` (to ide na Netlify)
 - `npm run preview`: lokalno pokreni build
+- `npm run test:e2e`: Playwright testovi nad pravom bazom, samo nalozima `e2e-*` (lozinke u `.env.test.local`)
 
 ## Struktura
 ```
@@ -35,6 +36,7 @@ src/
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
 docs/                 PLAN.md, supabase-schema.sql, supabase-seed.sql
 public/               manifest, sw.js, ikonice
+e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
 
 ## Rute
