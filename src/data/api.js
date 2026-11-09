@@ -563,6 +563,50 @@ export async function clearNutritionTarget(clientId) {
   unwrap(await supabase.from('nutrition_targets').delete().eq('client_id', clientId));
 }
 
+// ---------- Ishrana: namirnice i struktura obroka (trener) ----------
+
+function toFood(r) {
+  return {
+    id: r.id, name: r.name, group: r.food_group, kcal: r.kcal, protein: r.protein_g, carbs: r.carbs_g, fat: r.fat_g,
+    mealTypes: r.meal_types, minG: r.min_g, maxG: r.max_g, verified: r.verified, active: r.active, source: r.source,
+  };
+}
+
+export async function getFoods() {
+  return unwrap(await supabase.from('foods').select('*').order('name')).map(toFood);
+}
+
+export async function getFood(id) {
+  const result = await supabase.from('foods').select('*').eq('id', id).maybeSingle();
+  if (result.error?.code === '22P02') return null;
+  const row = unwrap(result);
+  return row ? toFood(row) : null;
+}
+
+// Greška sa code '23505' znači da namirnica sa tim nazivom već postoji (naziv je jedinstven).
+export async function saveFood(food) {
+  const fields = {
+    name: food.name, food_group: food.group, kcal: food.kcal, protein_g: food.protein, carbs_g: food.carbs, fat_g: food.fat,
+    meal_types: food.mealTypes, min_g: food.minG, max_g: food.maxG, verified: food.verified, active: food.active,
+  };
+  if (!food.id) return unwrap(await supabase.from('foods').insert(fields).select('id').single()).id;
+  const rows = unwrap(await supabase.from('foods').update(fields).eq('id', food.id).select('id'));
+  if (!rows.length) throw new Error('Namirnica nije sačuvana.');
+  return food.id;
+}
+
+export async function getMealTemplates() {
+  const rows = unwrap(await supabase.from('meal_templates').select('*').order('position'));
+  return rows.map((r) => ({ mealType: r.meal_type, label: r.label, sharePct: r.share_pct, timeHint: r.time_hint, groups: r.food_groups }));
+}
+
+export async function saveMealTemplates(templates) {
+  const rows = unwrap(await supabase.from('meal_templates').upsert(templates.map((t, i) => ({
+    meal_type: t.mealType, label: t.label, position: i + 1, share_pct: t.sharePct, time_hint: t.timeHint, food_groups: t.groups,
+  }))).select('meal_type'));
+  if (rows.length !== templates.length) throw new Error('Struktura obroka nije sačuvana.');
+}
+
 // ---------- Ostalo ----------
 
 function today() {

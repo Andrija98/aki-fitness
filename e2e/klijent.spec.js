@@ -542,6 +542,95 @@ test.describe('ishrana: kalkulator', () => {
   });
 });
 
+test.describe('trener: namirnice i struktura obroka', () => {
+  let trainer;
+  // Test namirnice nose prefiks E2E i brišu se; u planove još ne ulaze.
+  const removeTestFoods = () => rest('foods?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+
+  test.beforeAll(async () => {
+    trainer = await resetAccount(ACCOUNT_TRAINER);
+    await removeTestFoods();
+  });
+  test.afterAll(async () => {
+    await removeTestFoods();
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('nova namirnica: provere, upozorenje za makroe, dupli naziv i označavanje provere', async ({ page }) => {
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Profil' }).click();
+    await page.getByRole('button', { name: 'Namirnice' }).click();
+    await page.getByRole('button', { name: 'Nova namirnica' }).click();
+
+    const save = page.getByRole('button', { name: 'Sačuvaj namirnicu' });
+    const alert = page.getByRole('alert');
+    await page.getByLabel('Naziv').fill('E2E Piletina');
+    await page.getByLabel('Kalorije (kcal)').fill('110');
+    await page.getByLabel('Proteini (g)').fill('230'); // greška u kucanju
+    await page.getByLabel('Ugljeni hidrati (g)').fill('0');
+    await page.getByLabel('Masti (g)').fill('1,2');
+    await expect(page.getByRole('note')).toContainText('Kalorije se ne slažu sa makroima');
+    await save.click();
+    await expect(alert).toHaveText('Proteini na 100 g moraju biti od 0 do 100.');
+
+    await page.getByLabel('Proteini (g)').fill('23');
+    await expect(page.getByRole('note')).toHaveCount(0);
+    await save.click();
+    await expect(alert).toHaveText('Izaberi bar jedan obrok u kom se nudi.');
+
+    // exact: inače "Ručak" pogađa i "Doručak"
+    await page.getByRole('group', { name: 'Obroci' }).getByRole('button', { name: 'Ručak', exact: true }).click();
+    await page.getByRole('group', { name: 'Obroci' }).getByRole('button', { name: 'Večera', exact: true }).click();
+    await page.getByLabel('Najmanja porcija (g)').fill('100');
+    await page.getByLabel('Najveća porcija (g)').fill('250');
+    await page.getByRole('checkbox', { name: /Proverena/ }).uncheck();
+    await save.click();
+
+    const row = page.getByRole('button', { name: /E2E Piletina/ });
+    await expect(row).toContainText('Neproverena');
+    await expect(row).toContainText('110 kcal · P 23 · UH 0 · M 1,2');
+    const saved = await rest('foods?name=eq.E2E%20Piletina&select=food_group,kcal,protein_g,fat_g,meal_types,min_g,max_g,verified', { token: trainer.token });
+    expect(saved.rows).toEqual([{ food_group: 'protein', kcal: 110, protein_g: 23, fat_g: 1.2, meal_types: ['rucak', 'vecera'], min_g: 100, max_g: 250, verified: false }]);
+
+    // Dupli naziv
+    await page.getByRole('button', { name: 'Nova namirnica' }).click();
+    await page.getByLabel('Naziv').fill('E2E Piletina');
+    for (const [label, value] of [['Kalorije (kcal)', '100'], ['Proteini (g)', '20'], ['Ugljeni hidrati (g)', '0'], ['Masti (g)', '2']]) await page.getByLabel(label).fill(value);
+    await page.getByRole('group', { name: 'Obroci' }).getByRole('button', { name: 'Ručak', exact: true }).click();
+    await save.click();
+    await expect(alert).toHaveText('Namirnica sa tim nazivom već postoji.');
+    await page.getByRole('button', { name: 'Nazad' }).click();
+
+    // Označavanje kao proverene
+    await page.getByRole('button', { name: /E2E Piletina/ }).click();
+    await page.getByRole('checkbox', { name: /Proverena/ }).check();
+    await save.click();
+    await expect(page.getByRole('button', { name: /E2E Piletina/ })).not.toContainText('Neproverena');
+  });
+
+  test('struktura obroka: zbir mora biti 100 %, čuvanje bez izmene', async ({ page }) => {
+    await resetAccount(ACCOUNT_TRAINER); // prvi test je već prošao onboarding ovim nalogom
+    const before = (await rest('meal_templates?select=meal_type,share_pct&order=position', { token: trainer.token })).rows;
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto('/#/obroci');
+
+    const breakfast = page.getByLabel('Udeo, Doručak');
+    const original = await breakfast.inputValue();
+    await breakfast.fill(String(Number(original) - 5));
+    await page.getByRole('button', { name: 'Sačuvaj strukturu' }).click();
+    await expect(page.getByRole('alert')).toContainText('Zbir udela mora biti 100 %');
+
+    // Vraćamo istu vrednost i čuvamo: test ne menja Akijevu pravu strukturu.
+    await breakfast.fill(original);
+    await page.getByRole('button', { name: 'Sačuvaj strukturu' }).click();
+    await expect(page.getByText('Struktura obroka sačuvana')).toBeVisible();
+    const after = (await rest('meal_templates?select=meal_type,share_pct&order=position', { token: trainer.token })).rows;
+    expect(after).toEqual(before);
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 

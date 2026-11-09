@@ -9,7 +9,36 @@ export const ACTIVITY = [
   { id: 'veoma', label: 'Veoma aktivan', hint: 'Fizički posao i svakodnevni trening', factor: 1.9 },
 ];
 
-const GOAL_FACTOR = { mrsavljenje: 0.8, snaga: 1.1, kondicija: 1 };
+export const FOOD_GROUPS = [
+  { id: 'protein', label: 'Protein' },
+  { id: 'uh', label: 'Ugljeni hidrati' },
+  { id: 'mast', label: 'Mast' },
+  { id: 'povrce', label: 'Povrće' },
+  { id: 'voce', label: 'Voće' },
+  { id: 'mlecni', label: 'Mlečni proizvodi' },
+];
+
+export const MEAL_TYPES = [
+  { id: 'dorucak', label: 'Doručak' },
+  { id: 'uzina1', label: 'Prva užina' },
+  { id: 'rucak', label: 'Ručak' },
+  { id: 'uzina2', label: 'Druga užina' },
+  { id: 'vecera', label: 'Večera' },
+];
+
+// Kalorije iz makroa: 4 kcal po gramu proteina i UH, 9 po gramu masti.
+export function kcalFromMacros(protein, carbs, fat) {
+  return 4 * protein + 4 * carbs + 9 * fat;
+}
+
+// Hvata greške u kucanju (npr. 320 g proteina umesto 32). Vlakna i alkohol prave malo odstupanje,
+// pa dozvoljavamo 15 %, a kod namirnica sa vrlo malo kalorija (povrće) 10 kcal.
+export function macrosMatchKcal({ kcal, protein, carbs, fat }) {
+  const diff = Math.abs(kcalFromMacros(protein, carbs, fat) - kcal);
+  return diff <= Math.max(10, kcal * 0.15);
+}
+
+const GOAL_FACTOR ={ mrsavljenje: 0.8, snaga: 1.1, kondicija: 1 };
 const PROTEIN_PER_KG = { mrsavljenje: 2.0, snaga: 1.8, kondicija: 1.6 };
 const MIN_KCAL = { m: 1500, z: 1200 };
 const FAT_SHARE = 0.25;

@@ -264,6 +264,18 @@ test.describe('dnevni cilj ishrane', () => {
   });
 });
 
+test('namirnice i strukturu obroka klijent čita, ali ne menja', async () => {
+  const foods = await rest('foods?select=id&limit=1', { token: b.token });
+  expect(foods.status).toBe(200);
+  const templates = await rest('meal_templates?select=meal_type', { token: b.token });
+  expect(templates.rows.length).toBeGreaterThan(0);
+
+  const created = await rest('foods', { token: b.token, method: 'POST', body: { name: 'E2E hak', food_group: 'protein', kcal: 1, protein_g: 0, carbs_g: 0, fat_g: 0 } });
+  expect(created.status).toBe(DENIED);
+  const changed = await rest('meal_templates?meal_type=eq.rucak', { token: b.token, method: 'PATCH', body: { share_pct: 99 } });
+  expect(changed.rows).toEqual([]);
+});
+
 test('klijent ne može da menja raspored programa', async () => {
   const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
   expect(added.status).toBe(DENIED);

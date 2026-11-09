@@ -1,7 +1,16 @@
 // Formula kalkulatora, bez browsera i baze. Očekivane vrednosti su izračunate ručno, korak po korak.
 
 import { test, expect } from '@playwright/test';
-import { calculateTargets, ageFromBirthYear } from '../src/lib/nutrition.js';
+import { calculateTargets, ageFromBirthYear, macrosMatchKcal } from '../src/lib/nutrition.js';
+
+test('provera kalorija i makroa hvata grešku u kucanju', () => {
+  // Pileća prsa: 4·23 + 4·0 + 9·1,2 = 102,8 kcal, upisano 110 → u redu (razlika 7 %)
+  expect(macrosMatchKcal({ kcal: 110, protein: 23, carbs: 0, fat: 1.2 })).toBe(true);
+  // 230 g proteina umesto 23 → 930 kcal iz makroa, daleko od 110
+  expect(macrosMatchKcal({ kcal: 110, protein: 230, carbs: 0, fat: 1.2 })).toBe(false);
+  // Krastavac: 15 kcal, iz makroa 4·0,7 + 4·3,6 + 9·0,1 = 18,1 → razlika 3 kcal, ispod donje granice od 10
+  expect(macrosMatchKcal({ kcal: 15, protein: 0.7, carbs: 3.6, fat: 0.1 })).toBe(true);
+});
 
 test('muškarac, kondicija: Mifflin-St Jeor × aktivnost, bez korekcije', () => {
   // BMR = 10·80 + 6,25·180 − 5·30 + 5 = 1780; × 1,55 = 2759 → 2760 kcal

@@ -29,6 +29,9 @@ import WorkoutsAdmin from './screens/WorkoutsAdmin.jsx';
 import Profile from './screens/Profile.jsx';
 import Progress from './screens/Progress.jsx';
 import Nutrition from './screens/Nutrition.jsx';
+import Foods from './screens/Foods.jsx';
+import FoodEditor from './screens/FoodEditor.jsx';
+import MealTemplates from './screens/MealTemplates.jsx';
 
 // Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
 const TAB_FOR_ROUTE = {
@@ -95,6 +98,9 @@ function AuthedApp() {
     case 'vezbe': screen = isTrainer ? <Exercises /> : <Home profile={profile} />; break;
     case 'trener-treninzi': screen = isTrainer ? <WorkoutsAdmin /> : <Home profile={profile} />; break;
     case 'trener-trening': screen = isTrainer ? <WorkoutEditor workoutId={p1} /> : <Home profile={profile} />; break;
+    case 'namirnice': screen = isTrainer ? <Foods /> : <Home profile={profile} />; break;
+    case 'namirnica': screen = isTrainer ? <FoodEditor foodId={p1} /> : <Home profile={profile} />; break;
+    case 'obroci': screen = isTrainer ? <MealTemplates /> : <Home profile={profile} />; break;
     case 'trener-programi': screen = isTrainer ? <ProgramsAdmin /> : <Home profile={profile} />; break;
     case 'trener-program': screen = isTrainer ? <ProgramEditor programId={p1} /> : <Home profile={profile} />; break;
     case 'klijenti': screen = isTrainer ? <Clients /> : <Home profile={profile} />; break;
@@ -106,7 +112,7 @@ function AuthedApp() {
     default: screen = <Home profile={profile} />;
   }
 
-  const tab = TAB_FOR_ROUTE[route.name] ?? (['trening', 'lozinka', 'trener-trening', 'trener-program'].includes(route.name) ? null : 'pocetna');
+  const tab = TAB_FOR_ROUTE[route.name] ?? (['trening', 'lozinka', 'trener-trening', 'trener-program', 'namirnica', 'obroci'].includes(route.name) ? null : 'pocetna');
 
   return (
     <>
