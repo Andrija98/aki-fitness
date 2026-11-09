@@ -141,6 +141,51 @@ test.describe('trener: klijenti', () => {
   });
 });
 
+test.describe('trener: vežbe', () => {
+  let trainer;
+  // Prava baza je zajednička: test vežbe nose prefiks E2E, nisu ni u jednom treningu i brišu se.
+  const removeTestExercises = () => rest('exercises?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+
+  test.afterAll(async () => {
+    await removeTestExercises();
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('dodavanje i izmena vežbe, uz odbijanje praznog i dupliranog naziva', async ({ page }) => {
+    trainer = await resetAccount(ACCOUNT_TRAINER);
+    await removeTestExercises();
+
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto('/#/vezbe');
+    await page.getByRole('button', { name: 'Nova vežba' }).click();
+
+    const add = page.getByRole('button', { name: 'Dodaj vežbu' });
+    await add.click();
+    await expect(page.getByRole('alert')).toHaveText('Unesi naziv vežbe.');
+    await page.getByLabel('Naziv vežbe').fill('bench PRESS');
+    await add.click();
+    await expect(page.getByRole('alert')).toHaveText('Vežba sa tim nazivom već postoji.');
+
+    await page.getByLabel('Naziv vežbe').fill('E2E Vežba');
+    await page.getByLabel('Savet za izvođenje').fill('Prvi savet');
+    await add.click();
+    await expect(page.getByRole('button', { name: 'Izmeni vežbu E2E Vežba' })).toBeVisible();
+    await expect(page.getByText('Prvi savet')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Izmeni vežbu E2E Vežba' }).click();
+    await page.getByLabel('Naziv vežbe').fill('E2E Izmenjena');
+    await page.getByLabel('Savet za izvođenje').fill('Drugi savet');
+    await page.getByRole('button', { name: 'Sačuvaj izmene' }).click();
+    await expect(page.getByRole('button', { name: 'Izmeni vežbu E2E Izmenjena' })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText('Drugi savet')).toBeVisible();
+    const saved = await rest('exercises?name=like.E2E*&select=name,cue', { token: trainer.token });
+    expect(saved.rows).toEqual([{ name: 'E2E Izmenjena', cue: 'Drugi savet' }]);
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 
@@ -158,9 +203,9 @@ test.describe('trener: video snimci', () => {
     await loginUi(page, ACCOUNT_TRAINER);
     await finishOnboarding(page);
     await page.getByRole('link', { name: 'Profil' }).click();
-    await page.getByRole('button', { name: 'Video snimci vežbi' }).click();
-    await expect(page.getByRole('heading', { name: 'Video snimci vežbi' })).toBeVisible();
-    await expect(page.getByText(/od 13 vežbi ima video/)).toBeVisible();
+    await page.getByRole('button', { name: 'Vežbe' }).click();
+    await expect(page.getByRole('heading', { name: 'Vežbe' })).toBeVisible();
+    await expect(page.getByText(/od \d+ vežbi ima video/)).toBeVisible();
 
     await page.getByLabel('YouTube link za Bench press').fill('nije link');
     await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
@@ -256,11 +301,11 @@ test.describe('prijavljen klijent', () => {
     await finishOnboarding(page);
     await page.getByRole('link', { name: 'Profil' }).click();
     await expect(page.getByRole('button', { name: 'Promeni lozinku' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Video snimci vežbi' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Vežbe' })).toHaveCount(0);
 
-    await page.goto('/#/videi');
+    await page.goto('/#/vezbe');
     await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Video snimci vežbi' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Vežbe' })).toHaveCount(0);
 
     await page.goto('/#/klijenti');
     await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();

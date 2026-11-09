@@ -16,7 +16,7 @@ import ProgramDetail from './screens/ProgramDetail.jsx';
 import WorkoutSession from './screens/WorkoutSession.jsx';
 import ClientDetail from './screens/ClientDetail.jsx';
 import Clients from './screens/Clients.jsx';
-import ExerciseVideos from './screens/ExerciseVideos.jsx';
+import Exercises from './screens/Exercises.jsx';
 import Profile from './screens/Profile.jsx';
 import Progress from './screens/Progress.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
@@ -78,7 +78,7 @@ function AuthedApp() {
     case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
     case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
     case 'napredak': screen = <Progress />; break;
-    case 'videi': screen = isTrainer ? <ExerciseVideos /> : <Home profile={profile} />; break;
+    case 'vezbe': screen = isTrainer ? <Exercises /> : <Home profile={profile} />; break;
     case 'klijenti': screen = isTrainer ? <Clients /> : <Home profile={profile} />; break;
     case 'klijent': screen = isTrainer ? <ClientDetail clientId={p1} /> : <Home profile={profile} />; break;
     case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;

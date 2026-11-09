@@ -89,7 +89,7 @@ export default function Profile({ profile }) {
         <button onClick={() => navigate('ciljevi')}><span>Moji ciljevi</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={() => navigate('treninzi')}><span>Promeni program</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         {profile.role === 'trainer' && <button onClick={() => navigate('klijenti')}><span>Klijenti</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
-        {profile.role === 'trainer' && <button onClick={() => navigate('videi')}><span>Video snimci vežbi</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
+        {profile.role === 'trainer' && <button onClick={() => navigate('vezbe')}><span>Vežbe</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         <button onClick={() => navigate('lozinka')}><span>Promeni lozinku</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={logout}><span>Odjavi se</span></button>
       </div>

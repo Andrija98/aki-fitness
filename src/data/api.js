@@ -129,8 +129,17 @@ export async function getWorkout(id) {
 }
 
 export async function getExercises() {
-  const rows = unwrap(await supabase.from('exercises').select('id, name, video_url').order('name'));
-  return rows.map((r) => ({ id: r.id, name: r.name, videoUrl: r.video_url }));
+  const rows = unwrap(await supabase.from('exercises').select('id, name, cue, video_url').order('name'));
+  return rows.map((r) => ({ id: r.id, name: r.name, cue: r.cue, videoUrl: r.video_url }));
+}
+
+export async function createExercise({ name, cue }) {
+  unwrap(await supabase.from('exercises').insert({ name, cue }).select('id').single());
+}
+
+export async function updateExercise(id, { name, cue }) {
+  const rows = unwrap(await supabase.from('exercises').update({ name, cue }).eq('id', id).select('id'));
+  if (!rows.length) throw new Error('Vežba nije izmenjena.');
 }
 
 // url = null uklanja video. RLS odbijen UPDATE ne vraća grešku nego 0 redova, pa to proveravamo ručno.

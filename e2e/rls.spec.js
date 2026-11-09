@@ -136,6 +136,11 @@ test('trener može da menja sadržaj', async () => {
   expect(changed.rows).toHaveLength(1);
 });
 
+test('klijent ne može da doda novu vežbu', async () => {
+  const created = await rest('exercises', { token: b.token, method: 'POST', body: { name: 'E2E hak' } });
+  expect(created.status).toBe(DENIED);
+});
+
 test('video vežbe može da menja samo trener', async () => {
   const before = await rest(`exercises?id=eq.${SKLEKOVI}&select=video_url`, { token: b.token });
   expect(before.rows).toHaveLength(1);
