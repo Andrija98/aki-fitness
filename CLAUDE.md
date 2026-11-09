@@ -34,14 +34,14 @@ src/
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages (tim redom)
+docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets (tim redom)
 public/               manifest, sw.js, ikonice
 e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
 
 ## Rute
 `#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id`, `#/trener-treninzi`, `#/trener-trening/:id|novi`, `#/trener-programi`, `#/trener-program/:id|novi` (poslednjih sedam samo trener), `#/ciljevi`,
-`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` ("Stiže uskoro").
+`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (kalkulator; plan obroka sledi).
 
 ## Pravila
 - **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.

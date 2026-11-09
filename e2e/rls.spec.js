@@ -232,6 +232,38 @@ test.describe('poruke', () => {
   });
 });
 
+test.describe('dnevni cilj ishrane', () => {
+  test.beforeAll(async () => {
+    await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: trainer.token, method: 'DELETE' });
+    await rest('nutrition_targets', { token: trainer.token, method: 'POST', body: { client_id: a.id, kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 60 } });
+  });
+  test.afterAll(() => rest(`nutrition_targets?client_id=eq.${a.id}`, { token: trainer.token, method: 'DELETE' }));
+
+  test('klijent i trener vide cilj, drugi klijent ne', async () => {
+    expect((await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: a.token })).rows).toHaveLength(1);
+    expect((await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: trainer.token })).rows).toHaveLength(1);
+    expect((await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+  });
+
+  test('klijent ne može sam da menja ni postavi cilj', async () => {
+    const changed = await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: a.token, method: 'PATCH', body: { kcal: 5000 } });
+    expect(changed.rows).toEqual([]);
+    const removed = await rest(`nutrition_targets?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
+    expect(removed.rows).toEqual([]);
+    const created = await rest('nutrition_targets', { token: b.token, method: 'POST', body: { client_id: b.id, kcal: 5000, protein_g: 1, carbs_g: 1, fat_g: 1 } });
+    expect(created.status).toBe(DENIED);
+    expect((await rest(`nutrition_targets?client_id=eq.${a.id}&select=kcal`, { token: a.token })).rows).toEqual([{ kcal: 2000 }]);
+  });
+
+  test('podatke o telu klijent menja samo sebi', async () => {
+    const own = await rest(`profiles?id=eq.${b.id}`, { token: b.token, method: 'PATCH', body: { height_cm: 180 } });
+    expect(own.rows).toHaveLength(1);
+    const other = await rest(`profiles?id=eq.${a.id}`, { token: b.token, method: 'PATCH', body: { height_cm: 100 } });
+    expect(other.rows).toEqual([]);
+    await rest(`profiles?id=eq.${b.id}`, { token: b.token, method: 'PATCH', body: { height_cm: null } });
+  });
+});
+
 test('klijent ne može da menja raspored programa', async () => {
   const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
   expect(added.status).toBe(DENIED);

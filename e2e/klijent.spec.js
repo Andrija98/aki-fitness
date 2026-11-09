@@ -455,6 +455,93 @@ test.describe('poruke', () => {
   });
 });
 
+test.describe('ishrana: kalkulator', () => {
+  let trainer;
+  const removeOverride = (clientId) => rest(`nutrition_targets?client_id=eq.${clientId}`, { token: trainer.token, method: 'DELETE' });
+  const born = (age) => String(new Date().getFullYear() - age);
+
+  test.beforeAll(async () => { trainer = await resetAccount(ACCOUNT_TRAINER); });
+  test.afterAll(async () => {
+    const client = await resetAccount(ACCOUNT_A);
+    await removeOverride(client.id);
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('klijent unosi podatke i dobija preporuku; ispod 18 nema računa', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await removeOverride(client.id);
+    await loginUi(page, ACCOUNT_A);
+    await finishOnboarding(page); // cilj: mršavljenje
+
+    await page.getByRole('link', { name: 'Ishrana' }).click();
+    await expect(page.getByRole('heading', { name: 'Izračunaj dnevni cilj' })).toBeVisible();
+    const calculate = page.getByRole('button', { name: 'Izračunaj' });
+    await calculate.click();
+    await expect(page.getByRole('alert')).toHaveText('Izaberi pol.');
+
+    await page.getByRole('radiogroup', { name: 'Pol' }).getByRole('radio', { name: 'Ženski' }).click();
+    await page.getByLabel('Godina rođenja').fill(born(16));
+    await page.getByLabel('Visina (cm)').fill('165');
+    await page.getByLabel('Težina (kg)').fill('60');
+    await page.getByRole('radiogroup', { name: 'Aktivnost' }).getByRole('radio', { name: /Sedeći/ }).click();
+    await calculate.click();
+    await expect(page.getByText('Za mlađe od 18 godina ne računamo cilj po formuli.', { exact: false })).toBeVisible();
+
+    // Žena, 25 god, 165 cm, 60 kg, sedeći, mršavljenje: 1345,25 × 1,2 × 0,8 = 1291 → 1290 kcal, P 120, M 35, UH 125
+    await page.getByRole('button', { name: 'Izmeni podatke' }).click();
+    await page.getByLabel('Godina rođenja').fill(born(25));
+    await calculate.click();
+    await expect(page.locator('.target-kcal')).toContainText('1.290');
+    await expect(page.locator('.stat-grid')).toContainText('120 g');
+    await expect(page.locator('.stat-grid')).toContainText('125 g');
+    await expect(page.locator('.stat-grid')).toContainText('35 g');
+    await expect(page.getByText('Preporuka po formuli.', { exact: false })).toBeVisible();
+
+    const weights = await rest(`weights?user_id=eq.${client.id}&select=kg`, { token: client.token });
+    expect(weights.rows).toEqual([{ kg: 60 }]);
+  });
+
+  test('trener vidi preporuku, postavlja svoj cilj i vraća na preporuku', async ({ page, browser }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await removeOverride(client.id);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
+      name: 'E2E Klijent', goal: 'mrsavljenje', location: 'kuca', level: 'pocetnik', per_week: 3,
+      sex: 'z', birth_year: Number(born(25)), height_cm: 165, activity: 'sedeci',
+    } });
+    await rest('weights', { token: client.token, method: 'POST', body: { user_id: client.id, date: '2000-01-01', kg: 60 } });
+
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/klijent/${client.id}`);
+    const card = page.getByRole('form', { name: 'Dnevni cilj ishrane' });
+    await expect(card).toContainText('Preporuka po formuli: 1.290 kcal');
+    await expect(page.getByLabel('Kalorije')).toHaveValue('1290');
+
+    await page.getByLabel('Kalorije').fill('1500');
+    await page.getByLabel('Proteini (g)').fill('130');
+    await page.getByLabel('Ugljeni hidrati (g)').fill('150');
+    await page.getByLabel('Masti (g)').fill('40');
+    await page.getByRole('button', { name: 'Sačuvaj cilj' }).click();
+    await expect(page.getByRole('button', { name: 'Vrati na preporuku' })).toBeVisible();
+    const saved = await rest(`nutrition_targets?client_id=eq.${client.id}&select=kcal,protein_g,carbs_g,fat_g`, { token: trainer.token });
+    expect(saved.rows).toEqual([{ kcal: 1500, protein_g: 130, carbs_g: 150, fat_g: 40 }]);
+
+    // Klijent u drugom prozoru vidi trenerov cilj.
+    const clientContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const clientPage = await clientContext.newPage();
+    await loginUi(clientPage, ACCOUNT_A);
+    await clientPage.getByRole('link', { name: 'Ishrana' }).click();
+    await expect(clientPage.locator('.target-kcal')).toContainText('1.500');
+    await expect(clientPage.getByText('Cilj postavio Aki.')).toBeVisible();
+    await clientContext.close();
+
+    await page.getByRole('button', { name: 'Vrati na preporuku' }).click();
+    await expect(page.getByRole('button', { name: 'Vrati na preporuku' })).toHaveCount(0);
+    expect((await rest(`nutrition_targets?client_id=eq.${client.id}`, { token: trainer.token })).rows).toEqual([]);
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 

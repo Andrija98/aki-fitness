@@ -28,7 +28,7 @@ import WorkoutEditor from './screens/WorkoutEditor.jsx';
 import WorkoutsAdmin from './screens/WorkoutsAdmin.jsx';
 import Profile from './screens/Profile.jsx';
 import Progress from './screens/Progress.jsx';
-import ComingSoon from './screens/ComingSoon.jsx';
+import Nutrition from './screens/Nutrition.jsx';
 
 // Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
 const TAB_FOR_ROUTE = {
@@ -90,7 +90,7 @@ function AuthedApp() {
     case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
     case 'profil': screen = <Profile profile={profile} />; break;
     case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
-    case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
+    case 'ishrana': screen = <Nutrition />; break;
     case 'napredak': screen = <Progress />; break;
     case 'vezbe': screen = isTrainer ? <Exercises /> : <Home profile={profile} />; break;
     case 'trener-treninzi': screen = isTrainer ? <WorkoutsAdmin /> : <Home profile={profile} />; break;

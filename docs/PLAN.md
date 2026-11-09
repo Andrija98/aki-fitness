@@ -25,7 +25,8 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 ## Faza 3 — Trener i komunikacija
 1. **Trener panel**: lista klijenata i njihov napredak (urađeno), dodavanje programa i vežbi
 2. **Poruke** sa trenerom (Supabase Realtime): tekstualne poruke urađene; prilozi i push obaveštenja kasnije
-3. **Ishrana**: plan obroka po danu, kalorije i makroi, PDF plan
+3. **Ishrana**, u 4 koraka: (1) kalkulator dnevnog cilja (urađeno), (2) baza namirnica i struktura obroka (trener),
+   (3) klijent bira namirnice koje voli, (4) generator plana sa gramažama + prikaz iz dizajna 05; trener može da menja plan
 4. Fotografije napretka (Supabase Storage, privatni bucket)
 5. Push notifikacije (podsetnik za trening)
 

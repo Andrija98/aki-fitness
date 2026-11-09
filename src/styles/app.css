@@ -269,6 +269,10 @@ select.text-input { appearance: none; }
   display: flex; align-items: center; gap: 10px; background: var(--color-bg);
 }
 
+/* ---------- Ishrana ---------- */
+.target-kcal { font-family: var(--font-heading); font-size: 34px; line-height: 1.1; }
+.target-kcal .small { font-family: var(--font-body); font-weight: 600; }
+
 /* ---------- Uskoro ---------- */
 .soon { flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 14px; }
 .soon-blob { width: 120px; height: 120px; border-radius: 50%; background: var(--color-accent-2-200); display: grid; place-items: center; color: var(--color-accent-2-800); }

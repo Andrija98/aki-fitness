@@ -521,6 +521,48 @@ export function onNewMessage(clientId, callback) {
   return () => { supabase.removeChannel(channel); };
 }
 
+// ---------- Ishrana: kalkulator ----------
+
+// Ulazi za kalkulator i trenerova izmena cilja (ili null). Bez parametra: prijavljeni korisnik.
+export async function getNutrition(forUserId) {
+  const userId = forUserId ?? await currentUserId();
+  const [row, latest, override] = await Promise.all([
+    supabase.from('profiles').select('goal, sex, birth_year, height_cm, activity').eq('id', userId).maybeSingle().then(unwrap),
+    supabase.from('weights').select('kg').eq('user_id', userId).order('date', { ascending: false }).limit(1).then(unwrap),
+    supabase.from('nutrition_targets').select('kcal, protein_g, carbs_g, fat_g').eq('client_id', userId).maybeSingle().then(unwrap),
+  ]);
+  return {
+    goal: row?.goal ?? null,
+    sex: row?.sex ?? null,
+    birthYear: row?.birth_year ?? null,
+    heightCm: row?.height_cm ?? null,
+    activity: row?.activity ?? null,
+    weightKg: latest[0]?.kg ?? null,
+    override: override ? { kcal: override.kcal, protein: override.protein_g, carbs: override.carbs_g, fat: override.fat_g } : null,
+  };
+}
+
+// Klijent unosi podatke o telu; nova težina ide u istoriju težine kao i iz Profila.
+export async function saveBodyData({ sex, birthYear, heightCm, activity, weightKg }) {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('profiles')
+    .update({ sex, birth_year: birthYear, height_cm: heightCm, activity }).eq('id', userId).select('id'));
+  if (!rows.length) throw new Error('Podaci nisu sačuvani.');
+  const latest = unwrap(await supabase.from('weights').select('kg').eq('user_id', userId).order('date', { ascending: false }).limit(1));
+  if (weightKg && weightKg !== latest[0]?.kg) await addWeight(weightKg);
+}
+
+export async function setNutritionTarget(clientId, { kcal, protein, carbs, fat }) {
+  const rows = unwrap(await supabase.from('nutrition_targets').upsert({
+    client_id: clientId, kcal, protein_g: protein, carbs_g: carbs, fat_g: fat, updated_at: new Date().toISOString(),
+  }).select('client_id'));
+  if (!rows.length) throw new Error('Cilj nije sačuvan.');
+}
+
+export async function clearNutritionTarget(clientId) {
+  unwrap(await supabase.from('nutrition_targets').delete().eq('client_id', clientId));
+}
+
 // ---------- Ostalo ----------
 
 function today() {

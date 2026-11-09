@@ -63,7 +63,7 @@ export async function resetAccount(account) {
     rest(`profiles?id=eq.${id}`, {
       token,
       method: 'PATCH',
-      body: { name: '', goal: null, location: null, level: null, per_week: null },
+      body: { name: '', goal: null, location: null, level: null, per_week: null, sex: null, birth_year: null, height_cm: null, activity: null },
     }),
   ];
   for (const result of await Promise.all(writes)) {
