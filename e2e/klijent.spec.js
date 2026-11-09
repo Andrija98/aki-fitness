@@ -400,6 +400,61 @@ test.describe('trener: klijent bez mreže', () => {
   });
 });
 
+test.describe('poruke', () => {
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('klijent i trener se dopisuju uživo, sa nepročitanim na tabu', async ({ page, browser }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    const trainerSession = await resetAccount(ACCOUNT_TRAINER);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+
+    // Klijent u jednom prozoru
+    await loginUi(page, ACCOUNT_A);
+    await expect(page.getByRole('heading', { name: 'Zdravo, E2E Klijent' })).toBeVisible();
+    await page.getByRole('link', { name: 'Aki', exact: true }).click();
+    await expect(page.getByText('Pitaj Akija bilo šta')).toBeVisible();
+    await page.getByLabel('Poruka').fill('Zdravo treneru');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.locator('.bubble--out')).toContainText('Zdravo treneru');
+
+    // Trener u drugom prozoru, istovremeno
+    const trainerContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const trainer = await trainerContext.newPage();
+    await loginUi(trainer, ACCOUNT_TRAINER);
+    await finishOnboarding(trainer);
+    await expect(trainer.getByRole('link', { name: 'Poruke, nepročitanih: 1' })).toBeVisible();
+    await trainer.getByRole('link', { name: /^Poruke/ }).click();
+    await trainer.getByRole('button', { name: /E2E Klijent/ }).click();
+    await expect(trainer.locator('.bubble--in')).toContainText('Zdravo treneru');
+    await expect(trainer.getByRole('link', { name: 'Poruke', exact: true })).toBeVisible();
+
+    // Odgovor stiže klijentu bez osvežavanja
+    await trainer.getByLabel('Poruka').fill('Bravo za trening!');
+    await trainer.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.locator('.bubble--in')).toContainText('Bravo za trening!');
+
+    // Klijent nije na razgovoru: nova poruka se vidi kao nepročitana na tabu
+    await page.getByRole('link', { name: 'Početna' }).click();
+    await trainer.getByLabel('Poruka').fill('Još jedna');
+    await trainer.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.getByRole('link', { name: 'Aki, nepročitanih: 1' })).toBeVisible();
+    await page.getByRole('link', { name: /^Aki/ }).click();
+    await expect(page.locator('.bubble--in').last()).toContainText('Još jedna');
+    await expect(page.getByRole('link', { name: 'Aki', exact: true })).toBeVisible();
+
+    const saved = await rest(`messages?client_id=eq.${client.id}&select=body,read_at,sender_id&order=created_at`, { token: trainerSession.token });
+    expect(saved.rows.map((m) => [m.body, m.sender_id === client.id, m.read_at !== null])).toEqual([
+      ['Zdravo treneru', true, true],
+      ['Bravo za trening!', false, true],
+      ['Još jedna', false, true],
+    ]);
+    await trainerContext.close();
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 

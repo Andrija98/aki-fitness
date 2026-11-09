@@ -177,5 +177,7 @@ create policy "serije: trener" on public.session_sets for select using (public.i
 create policy "težina: svoje"  on public.weights for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "težina: trener" on public.weights for select using (public.is_trainer());
 
+-- Poruke: tabela, pravila, Realtime i funkcija za testove su u docs/supabase-messages.sql (pokreni posle ovog fajla).
+
 create policy "mere: svoje"  on public.measurements for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "mere: trener" on public.measurements for select using (public.is_trainer());

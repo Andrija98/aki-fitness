@@ -447,6 +447,80 @@ export async function getClient(id) {
   return unwrap(result);
 }
 
+// ---------- Poruke ----------
+// Jedan razgovor po klijentu (client_id). Klijent ne prosleđuje clientId: to je njegov razgovor.
+
+function toMessage(row, me) {
+  return { id: row.id, clientId: row.client_id, body: row.body, createdAt: row.created_at, readAt: row.read_at, mine: row.sender_id === me };
+}
+
+export async function getMessages(clientId) {
+  const me = await currentUserId();
+  const rows = unwrap(await supabase.from('messages').select('*').eq('client_id', clientId ?? me).order('created_at'));
+  return rows.map((r) => toMessage(r, me));
+}
+
+export async function sendMessage(body, clientId) {
+  const me = await currentUserId();
+  const row = unwrap(await supabase.from('messages').insert({ client_id: clientId ?? me, body }).select().single());
+  return toMessage(row, me);
+}
+
+// Primalac označava pročitano. RLS sam preskače poruke koje ovaj korisnik ne sme da označi.
+export async function markMessagesRead(clientId) {
+  const me = await currentUserId();
+  unwrap(await supabase.from('messages').update({ read_at: new Date().toISOString() })
+    .eq('client_id', clientId ?? me).is('read_at', null).neq('sender_id', me));
+}
+
+// Nepročitane za klijenta: poruke trenera. Za trenera: poruke klijenata (pošiljalac je sam klijent).
+export async function getUnreadCount(isTrainer) {
+  const me = await currentUserId();
+  let query = supabase.from('messages').select('client_id, sender_id').is('read_at', null).neq('sender_id', me);
+  if (!isTrainer) query = query.eq('client_id', me);
+  const rows = unwrap(await query);
+  return rows.filter((r) => !isTrainer || r.sender_id === r.client_id).length;
+}
+
+// Trener: klijenti sa poslednjom porukom i brojem nepročitanih. Prvo oni sa nepročitanim, pa po poslednjoj poruci.
+export async function getInbox() {
+  const [clients, rows] = await Promise.all([
+    getClients(),
+    supabase.from('messages').select('client_id, sender_id, body, created_at, read_at').order('created_at', { ascending: false }).limit(500).then(unwrap),
+  ]);
+  return clients
+    .map((c) => {
+      const own = rows.filter((r) => r.client_id === c.id);
+      return {
+        id: c.id,
+        name: c.name,
+        lastBody: own[0]?.body ?? null,
+        lastAt: own[0]?.created_at ?? null,
+        unread: own.filter((r) => !r.read_at && r.sender_id === c.id).length,
+      };
+    })
+    .sort((a, b) => (b.unread > 0) - (a.unread > 0) || (b.lastAt ?? '').localeCompare(a.lastAt ?? ''));
+}
+
+let channelCounter = 0;
+
+// callback(message) za svaku novu poruku koju korisnik sme da vidi (Realtime poštuje RLS).
+// clientId ograničava na jedan razgovor; bez njega stižu sve dozvoljene. Vraća funkciju za odjavu.
+export function onNewMessage(clientId, callback) {
+  let me = null;
+  getAuthSession().then((s) => { me = s?.user.id ?? null; });
+  const channel = supabase
+    .channel(`messages-${channelCounter++}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      ...(clientId ? { filter: `client_id=eq.${clientId}` } : {}),
+    }, (payload) => callback(toMessage(payload.new, me)))
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}
+
 // ---------- Ostalo ----------
 
 function today() {

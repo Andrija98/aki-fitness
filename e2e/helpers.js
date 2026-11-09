@@ -59,6 +59,7 @@ export async function resetAccount(account) {
     rest(`weights?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`enrollments?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`measurements?user_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest('rpc/e2e_clear_messages', { token, method: 'POST', body: {} }), // radi samo za e2e naloge (docs/supabase-messages.sql)
     rest(`profiles?id=eq.${id}`, {
       token,
       method: 'PATCH',
@@ -69,6 +70,24 @@ export async function resetAccount(account) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
   }
   return { token, id };
+}
+
+// Realtime pretplata na nove poruke iz Node-a, kao određeni korisnik. Vraća { received, close }.
+export async function subscribeToMessages(session) {
+  const { createClient } = await import('@supabase/supabase-js');
+  const client = createClient(baseUrl(), anonKey(), { auth: { persistSession: false, autoRefreshToken: false } });
+  await client.auth.setSession({ access_token: session.token, refresh_token: session.refreshToken });
+  client.realtime.setAuth(session.token);
+  const received = [];
+  await new Promise((resolve, reject) => {
+    client.channel(`e2e-${Math.random()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => received.push(p.new))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') resolve();
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(`Realtime: ${status}`));
+      });
+  });
+  return { received, close: () => client.removeAllChannels() };
 }
 
 // Presreće promenu lozinke, da test ne promeni pravu lozinku naloga. Vraća objekat u koji upisuje šta je poslato.

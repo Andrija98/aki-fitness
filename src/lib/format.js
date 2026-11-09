@@ -13,6 +13,20 @@ export function formatShortDate(d) {
   return date.toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'short' });
 }
 
+// "Danas", "Juče" ili kratak datum, za razdvajanje poruka po danima.
+export function formatDayLabel(d) {
+  const key = dateKey(d);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (key === dateKey(new Date())) return 'Danas';
+  if (key === dateKey(yesterday)) return 'Juče';
+  return formatShortDate(d);
+}
+
+export function formatTime(d) {
+  return new Date(d).toLocaleTimeString('sr-Latn-RS', { hour: '2-digit', minute: '2-digit' });
+}
+
 export function formatNumber(n, decimals = 1) {
   return Number(n).toLocaleString('sr-RS', { maximumFractionDigits: decimals });
 }

@@ -18,6 +18,10 @@ import WorkoutSession from './screens/WorkoutSession.jsx';
 import ClientDetail from './screens/ClientDetail.jsx';
 import Clients from './screens/Clients.jsx';
 import Exercises from './screens/Exercises.jsx';
+import Chat from './screens/Chat.jsx';
+import Inbox, { ClientChat } from './screens/Inbox.jsx';
+import { useUnread } from './lib/useUnread.js';
+import { TRAINER_NAME } from './config.js';
 import ProgramEditor from './screens/ProgramEditor.jsx';
 import ProgramsAdmin from './screens/ProgramsAdmin.jsx';
 import WorkoutEditor from './screens/WorkoutEditor.jsx';
@@ -49,11 +53,24 @@ export default function App() {
   return <AuthedApp />;
 }
 
+function ChatHeader() {
+  return (
+    <div className="row" style={{ gap: 12 }}>
+      <span className="avatar" aria-hidden="true">{TRAINER_NAME.charAt(0)}</span>
+      <span className="col">
+        <span className="heading" style={{ fontSize: 20 }}>{TRAINER_NAME}</span>
+        <span className="small" style={{ fontWeight: 600, color: 'var(--color-accent-2-700)' }}>Tvoj trener</span>
+      </span>
+    </div>
+  );
+}
+
 // Odvojena komponenta da se getProfile i ostali podaci učitaju tek posle prijave.
 function AuthedApp() {
   const route = useRoute();
   const { data: profile, loading, error, reload } = useData(getProfile);
   const toastMessage = useToast();
+  const unread = useUnread(profile?.role === 'trainer', Boolean(profile));
 
   if (loading) return null;
 
@@ -82,7 +99,10 @@ function AuthedApp() {
     case 'trener-program': screen = isTrainer ? <ProgramEditor programId={p1} /> : <Home profile={profile} />; break;
     case 'klijenti': screen = isTrainer ? <Clients /> : <Home profile={profile} />; break;
     case 'klijent': screen = isTrainer ? <ClientDetail clientId={p1} /> : <Home profile={profile} />; break;
-    case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;
+    case 'poruke':
+      if (isTrainer) screen = p1 ? <ClientChat clientId={p1} /> : <Inbox />;
+      else screen = <Chat header={<ChatHeader />} emptyText={`Pitaj ${TRAINER_NAME}ja bilo šta o treninzima i ishrani.`} />;
+      break;
     default: screen = <Home profile={profile} />;
   }
 
@@ -92,7 +112,7 @@ function AuthedApp() {
     <>
       {/* key: kad se promeni adresa, ekran se kreira iznova (svež state) */}
       <main key={route.name + route.params.join('/')}>{screen}</main>
-      {tab && <TabBar active={tab} />}
+      {tab && <TabBar active={tab} unread={unread} isTrainer={isTrainer} />}
       {toastMessage && <div className="toast" role="status">{toastMessage}</div>}
     </>
   );

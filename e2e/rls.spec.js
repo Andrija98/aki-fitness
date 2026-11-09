@@ -2,7 +2,7 @@
 // Ekran ovo ne može da proveri, jer api.js sam filtrira po user_id.
 
 import { test, expect } from '@playwright/test';
-import { ACCOUNT_A, ACCOUNT_B, ACCOUNT_TRAINER, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount } from './helpers.js';
+import { ACCOUNT_A, ACCOUNT_B, ACCOUNT_TRAINER, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount, subscribeToMessages } from './helpers.js';
 
 const DENIED = 403;
 let a;
@@ -164,6 +164,72 @@ test('video vežbe može da menja samo trener', async () => {
 
   const after = await rest(`exercises?id=eq.${SKLEKOVI}&select=video_url`, { token: b.token });
   expect(after.rows).toEqual([{ video_url: current }]);
+});
+
+test.describe('poruke', () => {
+  let clientMessageId;
+  let trainerMessageId;
+
+  test.beforeAll(async () => {
+    await rest('rpc/e2e_clear_messages', { token: a.token, method: 'POST', body: {} });
+    clientMessageId = (await rest('messages', { token: a.token, method: 'POST', body: { client_id: a.id, body: 'Poruka vlasnika' } })).rows[0].id;
+    trainerMessageId = (await rest('messages', { token: trainer.token, method: 'POST', body: { client_id: a.id, body: 'Od trenera' } })).rows[0].id;
+  });
+
+  test('vlasnik i trener vide razgovor, drugi klijent ne', async () => {
+    expect((await rest(`messages?client_id=eq.${a.id}`, { token: a.token })).rows).toHaveLength(2);
+    expect((await rest(`messages?client_id=eq.${a.id}`, { token: trainer.token })).rows).toHaveLength(2);
+    expect((await rest(`messages?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+  });
+
+  test('niko ne piše u tuđi razgovor ni u tuđe ime', async () => {
+    const intoOther = await rest('messages', { token: b.token, method: 'POST', body: { client_id: a.id, body: 'hak' } });
+    expect(intoOther.status).toBe(DENIED);
+    const asOther = await rest('messages', { token: b.token, method: 'POST', body: { client_id: b.id, sender_id: a.id, body: 'hak' } });
+    expect(asOther.status).toBe(DENIED);
+  });
+
+  test('tekst poruke se ne menja, a pročitano označava samo primalac', async () => {
+    const edited = await rest(`messages?id=eq.${trainerMessageId}`, { token: a.token, method: 'PATCH', body: { body: 'izmenjeno' } });
+    expect(edited.status).toBeGreaterThanOrEqual(400);
+
+    const ownRead = await rest(`messages?id=eq.${clientMessageId}`, { token: a.token, method: 'PATCH', body: { read_at: new Date().toISOString() } });
+    expect(ownRead.rows).toEqual([]);
+    const otherRead = await rest(`messages?id=eq.${trainerMessageId}`, { token: b.token, method: 'PATCH', body: { read_at: new Date().toISOString() } });
+    expect(otherRead.rows).toEqual([]);
+    const read = await rest(`messages?id=eq.${trainerMessageId}`, { token: a.token, method: 'PATCH', body: { read_at: new Date().toISOString() } });
+    expect(read.rows).toHaveLength(1);
+
+    const texts = await rest(`messages?client_id=eq.${a.id}&select=body&order=created_at`, { token: a.token });
+    expect(texts.rows).toEqual([{ body: 'Poruka vlasnika' }, { body: 'Od trenera' }]);
+  });
+
+  test('poruke se ne brišu', async () => {
+    const removed = await rest(`messages?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
+    expect(removed.status >= 400 || removed.rows.length === 0).toBe(true);
+    expect((await rest(`messages?client_id=eq.${a.id}`, { token: a.token })).rows).toHaveLength(2);
+  });
+
+  // Da funkcija ne radi ništa za ne-e2e naloge, vidi se u SQL-u; test nalogom to ne može da se proveri.
+  test('čišćenje za testove briše samo poruke pozivaoca', async () => {
+    const cleared = await rest('rpc/e2e_clear_messages', { token: b.token, method: 'POST', body: {} });
+    expect(cleared.status).toBeLessThan(400);
+    expect((await rest(`messages?client_id=eq.${a.id}`, { token: a.token })).rows).toHaveLength(2);
+  });
+
+  test('Realtime ne šalje tuđe poruke drugom klijentu', async () => {
+    const spy = await subscribeToMessages(b);
+    const control = await subscribeToMessages(trainer); // kontrola: trener mora da dobije poruku, inače test ništa ne dokazuje
+    try {
+      await rest('messages', { token: a.token, method: 'POST', body: { client_id: a.id, body: 'Tajna poruka' } });
+      await expect.poll(() => control.received.length, { timeout: 10_000 }).toBe(1);
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(spy.received).toEqual([]);
+    } finally {
+      await spy.close();
+      await control.close();
+    }
+  });
 });
 
 test('klijent ne može da menja raspored programa', async () => {
