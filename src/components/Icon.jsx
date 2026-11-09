@@ -10,6 +10,7 @@ const PATHS = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   x: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
   check: <path d="M20 6 9 17l-5-5" />,
+  plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
   skipBack: <><path d="M19 20 9 12l10-8v16Z" /><path d="M5 19V5" /></>,

@@ -41,7 +41,7 @@ e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js 
 
 ## Rute
 `#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/ciljevi`,
-`#/ishrana`, `#/napredak`, `#/poruke` (poslednje tri su "Stiže uskoro").
+`#/napredak`, `#/ishrana`, `#/poruke` (poslednje dve su "Stiže uskoro").
 
 ## Pravila
 - **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.

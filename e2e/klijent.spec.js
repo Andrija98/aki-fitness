@@ -2,7 +2,7 @@
 
 import { test, expect } from '@playwright/test';
 import {
-  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, rest, resetAccount, loginUi, finishOnboarding,
+  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding,
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
 
@@ -177,6 +177,43 @@ test.describe('prijavljen klijent', () => {
     await expect(loginHeading(page)).toBeVisible();
     await page.reload();
     await expect(loginHeading(page)).toBeVisible();
+  });
+
+  test('Napredak: od praznog stanja do grafikona i razlike u težini', async ({ page }) => {
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    await expect(page.getByText('Upiši prvu težinu dugmetom +.')).toBeVisible();
+    await expect(page.getByText('Još nema odrađenih treninga.')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Upiši težinu' }).click();
+    await page.getByLabel('Težina danas u kilogramima').fill('72');
+    await page.getByRole('button', { name: 'Sačuvaj težinu' }).click();
+    await expect(page.getByText('Upiši još jednom da vidiš grafikon.')).toBeVisible();
+    await expect(page.getByRole('img', { name: /Grafikon težine/ })).toHaveCount(0);
+
+    const monthAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    await rest('weights', { token: account.token, method: 'POST', body: { user_id: account.id, date: monthAgo, kg: 75 } });
+    await page.reload();
+
+    await expect(page.getByRole('img', { name: /Grafikon težine: od 75 kg .* do 72 kg/ })).toBeVisible();
+    await expect(page.getByText('−3 kg')).toBeVisible();
+
+    const chart = page.locator('.weight-chart');
+    const box = await chart.boundingBox();
+    await chart.click({ position: { x: 5, y: box.height / 2 } });
+    await expect(page.locator('.chart-tip')).toContainText('75 kg');
+  });
+
+  test('Napredak: odrađen trening se vidi u istoriji', async ({ page }) => {
+    await finishOnboarding(page);
+    const session = await rest('sessions', { token: account.token, method: 'POST', body: { program_id: LAGANO, workout_id: GORNJI, duration_sec: 600 } });
+    for (const setNo of [1, 2]) {
+      await rest('session_sets', { token: account.token, method: 'POST', body: { session_id: session.rows[0].id, exercise_id: SKLEKOVI, set_no: setNo, reps: 10 } });
+    }
+
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    await expect(page.getByText('Gornji deo tela')).toBeVisible();
+    await expect(page.getByText('10 min · 2 serije')).toBeVisible();
   });
 
   test('promena lozinke iz Profila proverava unos i čuva lozinku', async ({ page }) => {

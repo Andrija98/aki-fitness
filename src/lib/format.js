@@ -7,6 +7,12 @@ export function formatLongDate(d = new Date()) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Prima i "YYYY-MM-DD" iz baze; podne sprečava da vremenska zona prebaci datum na susedni dan.
+export function formatShortDate(d) {
+  const date = typeof d === 'string' && d.length === 10 ? new Date(`${d}T12:00:00`) : new Date(d);
+  return date.toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'short' });
+}
+
 export function formatNumber(n, decimals = 1) {
   return Number(n).toLocaleString('sr-RS', { maximumFractionDigits: decimals });
 }

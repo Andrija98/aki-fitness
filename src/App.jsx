@@ -15,6 +15,7 @@ import Programs from './screens/Programs.jsx';
 import ProgramDetail from './screens/ProgramDetail.jsx';
 import WorkoutSession from './screens/WorkoutSession.jsx';
 import Profile from './screens/Profile.jsx';
+import Progress from './screens/Progress.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
 
 // Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
@@ -72,7 +73,7 @@ function AuthedApp() {
     case 'profil': screen = <Profile profile={profile} />; break;
     case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
     case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
-    case 'napredak': screen = <ComingSoon title="Napredak" icon="chart" text="Grafikon težine, mere i fotografije napretka." phase="Faza 2" />; break;
+    case 'napredak': screen = <Progress />; break;
     case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;
     default: screen = <Home profile={profile} />;
   }

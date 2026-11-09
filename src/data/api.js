@@ -217,7 +217,7 @@ export async function saveSession(session) {
 export async function getSessions() {
   const userId = await currentUserId();
   const rows = unwrap(await supabase.from('sessions')
-    .select('id, program_id, workout_id, date, duration_sec, session_sets(exercise_id, set_no, reps, seconds, kg)')
+    .select('id, program_id, workout_id, date, duration_sec, workouts(title), session_sets(exercise_id, set_no, reps, seconds, kg)')
     .eq('user_id', userId)
     .order('date'));
   return rows.map((r) => ({
@@ -225,6 +225,7 @@ export async function getSessions() {
     date: r.date,
     programId: r.program_id,
     workoutId: r.workout_id,
+    workoutTitle: r.workouts?.title ?? 'Trening',
     durationSec: r.duration_sec,
     sets: r.session_sets.map(toSet),
   }));
