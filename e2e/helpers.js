@@ -30,7 +30,7 @@ export async function apiLogin(account) {
   });
   if (!res.ok) throw new Error(`Prijava ${account.email} nije uspela: ${res.status}`);
   const body = await res.json();
-  return { token: body.access_token, id: body.user.id };
+  return { token: body.access_token, refreshToken: body.refresh_token, id: body.user.id };
 }
 
 // Poziv ka bazi. Bez tokena ide kao neprijavljen korisnik.
@@ -67,6 +67,20 @@ export async function resetAccount(account) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
   }
   return { token, id };
+}
+
+// Presreće promenu lozinke, da test ne promeni pravu lozinku naloga. Vraća objekat u koji upisuje šta je poslato.
+export async function mockPasswordUpdate(page, account) {
+  const captured = {};
+  await page.route('**/auth/v1/user*', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    captured.password = route.request().postDataJSON().password;
+    return route.fulfill({
+      status: 200,
+      json: { id: account.id, aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() },
+    });
+  });
+  return captured;
 }
 
 // ---------- Koraci kroz UI ----------

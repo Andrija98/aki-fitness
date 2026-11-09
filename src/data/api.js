@@ -64,10 +64,23 @@ export async function signOut() {
   if (error) throw error;
 }
 
-// callback(session) se zove pri svakoj promeni; vraća funkciju za odjavu slušaoca.
+// callback(session, event) se zove pri svakoj promeni; vraća funkciju za odjavu slušaoca.
 export function onAuthChange(callback) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  const { data } = supabase.auth.onAuthStateChange((event, session) => callback(session, event));
   return () => data.subscription.unsubscribe();
+}
+
+// Greške "nalog ne postoji" i "adresa nije dozvoljena" namerno ćutimo,
+// da niko preko ove forme ne može da proverava čiji mejl ima nalog.
+export async function requestPasswordReset(email) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error && (!error.status || error.status === 429 || error.status >= 500)) throw error;
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
 }
 
 // ---------- Sadržaj (trener) ----------

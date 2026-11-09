@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test';
 import {
   ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, rest, resetAccount, loginUi, finishOnboarding,
-  expectExercise, skipExercise, completeSetAndSkipRest,
+  expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
@@ -19,6 +19,64 @@ test.describe('bez naloga', () => {
     await loginUi(page, ACCOUNT_A, 'namerno-pogresna-lozinka');
     await expect(page.getByRole('alert')).toHaveText('Pogrešan email ili lozinka.');
     await expect(loginHeading(page)).toBeVisible();
+  });
+});
+
+test.describe('zaboravljena lozinka', () => {
+  const SENT = 'Ako nalog postoji, poslali smo link na taj email.';
+
+  // Svi zahtevi su presretnuti: testovi ne šalju prave mejlove i ne troše limit.
+  async function requestLink(page, response) {
+    let requested = null;
+    await page.route('**/auth/v1/recover*', (route) => {
+      requested = route.request().postDataJSON();
+      return route.fulfill(response);
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Zaboravljena lozinka?' }).click();
+    await page.getByLabel('Email').fill(ACCOUNT_A.email);
+    await page.getByRole('button', { name: 'Pošalji link' }).click();
+    return () => requested;
+  }
+
+  test('postojeći nalog dobija potvrdu', async ({ page }) => {
+    const requested = await requestLink(page, { status: 200, json: {} });
+    await expect(page.getByRole('status')).toHaveText(SENT);
+    expect(requested().email).toBe(ACCOUNT_A.email);
+  });
+
+  test('nedozvoljena adresa dobija istu poruku, bez otkrivanja naloga', async ({ page }) => {
+    await requestLink(page, { status: 400, json: { code: 400, error_code: 'email_address_not_authorized', msg: 'Email address not authorized' } });
+    await expect(page.getByRole('status')).toHaveText(SENT);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('previše zahteva daje poruku o čekanju', async ({ page }) => {
+    await requestLink(page, { status: 429, json: { code: 429, error_code: 'over_email_send_rate_limit', msg: 'rate limit' } });
+    await expect(page.getByRole('alert')).toHaveText('Previše pokušaja. Sačekaj malo pa probaj ponovo.');
+  });
+
+  test('istekao link vraća na login sa porukom', async ({ page }) => {
+    await page.goto('/#error=access_denied&error_code=otp_expired&error_description=expired');
+    await expect(loginHeading(page)).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveText('Link je istekao ili je već iskorišćen. Zatraži novi.');
+  });
+
+  test('link iz mejla traži novu lozinku pre ulaska u aplikaciju', async ({ page }) => {
+    const account = await resetAccount(ACCOUNT_A);
+    const captured = await mockPasswordUpdate(page, account);
+
+    // Isti oblik adrese koji Supabase šalje iz mejla, sa pravim tokenima.
+    await page.goto(`/#access_token=${account.token}&refresh_token=${account.refreshToken}&expires_in=3600&token_type=bearer&type=recovery`);
+    await expect(page.getByRole('heading', { name: 'Nova lozinka' })).toBeVisible();
+    await expect(page.getByRole('navigation')).toHaveCount(0);
+
+    await page.getByLabel('Nova lozinka').fill('nova-lozinka-123');
+    await page.getByLabel('Ponovi lozinku').fill('nova-lozinka-123');
+    await page.getByRole('button', { name: 'Sačuvaj lozinku' }).click();
+
+    await expect(page.getByLabel('Ime')).toBeVisible();
+    expect(captured.password).toBe('nova-lozinka-123');
   });
 });
 
@@ -119,6 +177,31 @@ test.describe('prijavljen klijent', () => {
     await expect(loginHeading(page)).toBeVisible();
     await page.reload();
     await expect(loginHeading(page)).toBeVisible();
+  });
+
+  test('promena lozinke iz Profila proverava unos i čuva lozinku', async ({ page }) => {
+    const captured = await mockPasswordUpdate(page, account);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Profil' }).click();
+    await page.getByRole('button', { name: 'Promeni lozinku' }).click();
+
+    const save = page.getByRole('button', { name: 'Sačuvaj lozinku' });
+    await page.getByLabel('Nova lozinka').fill('kratka');
+    await page.getByLabel('Ponovi lozinku').fill('kratka');
+    await save.click();
+    await expect(page.getByRole('alert')).toHaveText('Lozinka mora da ima najmanje 8 znakova.');
+
+    await page.getByLabel('Nova lozinka').fill('nova-lozinka-123');
+    await page.getByLabel('Ponovi lozinku').fill('druga-lozinka-123');
+    await save.click();
+    await expect(page.getByRole('alert')).toHaveText('Lozinke se ne poklapaju.');
+    expect(captured.password).toBeUndefined();
+
+    await page.getByLabel('Ponovi lozinku').fill('nova-lozinka-123');
+    await save.click();
+    await expect(page.getByText('Lozinka promenjena')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Promeni lozinku' })).toBeVisible();
+    expect(captured.password).toBe('nova-lozinka-123');
   });
 
   test('bez interneta: trening se ne gubi i ponovni pokušaj ne pravi duplikat', async ({ page, context }) => {

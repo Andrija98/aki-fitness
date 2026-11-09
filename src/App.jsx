@@ -1,13 +1,14 @@
 // Koren aplikacije: odlučuje koji ekran se prikazuje.
 // 1) Nije prijavljen → login.  2) Nema profila → onboarding.  3) Inače ekran prema adresi (#/...).
 
-import { useRoute } from './lib/router.js';
+import { useRoute, navigate, back } from './lib/router.js';
 import { useData } from './lib/useData.js';
-import { useToast } from './lib/toast.js';
+import { useToast, toast } from './lib/toast.js';
 import { useAuth } from './lib/useAuth.js';
 import { getProfile } from './data/api.js';
 import TabBar from './components/TabBar.jsx';
 import Login from './screens/Login.jsx';
+import NewPassword from './screens/NewPassword.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Home from './screens/Home.jsx';
 import Programs from './screens/Programs.jsx';
@@ -28,10 +29,14 @@ const TAB_FOR_ROUTE = {
 };
 
 export default function App() {
-  const { session, loading } = useAuth();
+  const { session, loading, recovering, finishRecovery } = useAuth();
 
   if (loading) return null;
   if (!session) return <Login />;
+  // Oporavak ima prednost nad ruterom: link iz mejla nosi token u #, isto gde ruter čita adresu.
+  if (recovering) {
+    return <NewPassword onDone={() => { finishRecovery(); navigate('pocetna'); }} />;
+  }
   return <AuthedApp />;
 }
 
@@ -65,13 +70,14 @@ function AuthedApp() {
     case 'program': screen = <ProgramDetail programId={p1} />; break;
     case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
     case 'profil': screen = <Profile profile={profile} />; break;
+    case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
     case 'ishrana': screen = <ComingSoon title="Ishrana" icon="utensils" text="Plan ishrane, kalorije i makroi koje ti trener pripremi." phase="Faza 3" />; break;
     case 'napredak': screen = <ComingSoon title="Napredak" icon="chart" text="Grafikon težine, mere i fotografije napretka." phase="Faza 2" />; break;
     case 'poruke': screen = <ComingSoon title="Poruke" icon="message" text="Direktne poruke sa trenerom, pitanja i novi planovi." phase="Faza 3" />; break;
     default: screen = <Home profile={profile} />;
   }
 
-  const tab = TAB_FOR_ROUTE[route.name] ?? (route.name === 'trening' ? null : 'pocetna');
+  const tab = TAB_FOR_ROUTE[route.name] ?? (route.name === 'trening' || route.name === 'lozinka' ? null : 'pocetna');
 
   return (
     <>
