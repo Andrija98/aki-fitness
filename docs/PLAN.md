@@ -23,7 +23,7 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 7. Trenerov pravi sadržaj: YouTube (unlisted) linkovi za svaku vežbu
 
 ## Faza 3 — Trener i komunikacija
-1. **Trener panel** (posebna ruta ili posebna mala web app): lista klijenata, njihovi treninzi, dodavanje programa i vežbi
+1. **Trener panel**: lista klijenata i njihov napredak (urađeno), dodavanje programa i vežbi
 2. **Poruke** sa trenerom (Supabase Realtime)
 3. **Ishrana**: plan obroka po danu, kalorije i makroi, PDF plan
 4. Fotografije napretka (Supabase Storage, privatni bucket)

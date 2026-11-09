@@ -226,8 +226,9 @@ export async function saveSession(session) {
   return { id: row.id, date: row.date, ...session };
 }
 
-export async function getSessions() {
-  const userId = await currentUserId();
+// Bez parametra: podaci prijavljenog korisnika. Trener prosleđuje ID klijenta.
+export async function getSessions(forUserId) {
+  const userId = forUserId ?? await currentUserId();
   const rows = unwrap(await supabase.from('sessions')
     .select('id, program_id, workout_id, date, duration_sec, workouts(title), session_sets(exercise_id, set_no, reps, seconds, kg)')
     .eq('user_id', userId)
@@ -281,8 +282,8 @@ export async function getProgramProgress(programId) {
 
 // ---------- Težina ----------
 
-export async function getWeights() {
-  const userId = await currentUserId();
+export async function getWeights(forUserId) {
+  const userId = forUserId ?? await currentUserId();
   return unwrap(await supabase.from('weights').select('date, kg').eq('user_id', userId).order('date'));
 }
 
@@ -293,8 +294,8 @@ export async function addWeight(kg) {
 
 // ---------- Mere ----------
 
-export async function getMeasurements() {
-  const userId = await currentUserId();
+export async function getMeasurements(forUserId) {
+  const userId = forUserId ?? await currentUserId();
   const rows = unwrap(await supabase.from('measurements').select('date, waist_cm, hips_cm, arm_cm').eq('user_id', userId).order('date'));
   return rows.map((r) => ({ date: r.date, waist: r.waist_cm, hips: r.hips_cm, arm: r.arm_cm }));
 }
@@ -307,6 +308,28 @@ export async function saveMeasurements(values) {
   if (values.hips != null) row.hips_cm = values.hips;
   if (values.arm != null) row.arm_cm = values.arm;
   unwrap(await supabase.from('measurements').upsert(row));
+}
+
+// ---------- Trener: klijenti ----------
+
+// Samo klijenti koji su završili onboarding. Prvi su oni koji najduže nisu trenirali.
+export async function getClients() {
+  const rows = unwrap(await supabase.from('profiles').select('id, name, goal, sessions(date)').eq('role', 'client').not('goal', 'is', null));
+  return rows
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      goal: r.goal,
+      sessionCount: r.sessions.length,
+      lastSessionAt: r.sessions.map((s) => s.date).sort().at(-1) ?? null,
+    }))
+    .sort((a, b) => (a.lastSessionAt ?? '').localeCompare(b.lastSessionAt ?? ''));
+}
+
+export async function getClient(id) {
+  const result = await supabase.from('profiles').select('id, name, goal').eq('id', id).eq('role', 'client').maybeSingle();
+  if (result.error?.code === '22P02') return null; // adresa sa ID-jem koji nije UUID
+  return unwrap(result);
 }
 
 // ---------- Ostalo ----------

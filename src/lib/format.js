@@ -58,6 +58,16 @@ export function formatClock(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+export const GOAL_LABEL = { mrsavljenje: 'Mršavljenje', snaga: 'Snaga i mišići', kondicija: 'Kondicija i energija' };
+
+export function formatDaysAgo(d) {
+  const startOfDay = (x) => new Date(dateKey(x) + 'T12:00:00').getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (days <= 0) return 'danas';
+  if (days === 1) return 'juče';
+  return `pre ${days} ${days % 10 === 1 && days % 100 !== 11 ? 'dan' : 'dana'}`;
+}
+
 export function youtubeId(url) {
   if (!url) return null;
   const m = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);

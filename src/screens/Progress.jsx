@@ -10,8 +10,9 @@ import Icon from '../components/Icon.jsx';
 
 const PAGE_SIZE = 10;
 
-async function load() {
-  const [weights, sessions, measurements] = await Promise.all([getWeights(), getSessions(), getMeasurements()]);
+// userId: trener gleda klijenta; bez njega prikaz je za prijavljenog korisnika.
+async function load(userId) {
+  const [weights, sessions, measurements] = await Promise.all([getWeights(userId), getSessions(userId), getMeasurements(userId)]);
   return { weights, sessions, measurements };
 }
 
@@ -34,8 +35,8 @@ function setsLabel(n) {
   return `${n} ${lastDigit >= 2 && lastDigit <= 4 && !teens ? 'serije' : 'serija'}`;
 }
 
-export default function Progress() {
-  const { data, reload } = useData(load);
+export default function Progress({ userId, readOnly = false, header }) {
+  const { data, reload } = useData(() => load(userId), [userId]);
   const [adding, setAdding] = useState(false);
   const [weight, setWeight] = useState('');
   const [saving, setSaving] = useState(false);
@@ -66,12 +67,14 @@ export default function Progress() {
 
   return (
     <div className="screen">
-      <div className="row between">
-        <h1 className="screen-title">Napredak</h1>
-        <button className="round-btn round-btn--accent" aria-label="Upiši težinu" aria-expanded={adding} onClick={() => setAdding(!adding)}>
-          <Icon name={adding ? 'x' : 'plus'} />
-        </button>
-      </div>
+      {header ?? (
+        <div className="row between">
+          <h1 className="screen-title">Napredak</h1>
+          <button className="round-btn round-btn--accent" aria-label="Upiši težinu" aria-expanded={adding} onClick={() => setAdding(!adding)}>
+            <Icon name={adding ? 'x' : 'plus'} />
+          </button>
+        </div>
+      )}
 
       {adding && (
         <form className="surface row" style={{ gap: 8 }} onSubmit={saveWeight}>
@@ -90,11 +93,11 @@ export default function Progress() {
           {weights.length > 1 && <span className="delta-badge">{formatChange(latest.kg - weights.at(-1).kg)}</span>}
         </div>
         {weights.length > 1 && <WeightChart weights={data.weights} />}
-        {weights.length === 1 && <p className="small muted" style={{ margin: 0 }}>Upiši još jednom da vidiš grafikon.</p>}
-        {weights.length === 0 && <p className="small muted" style={{ margin: 0 }}>Upiši prvu težinu dugmetom +.</p>}
+        {!readOnly && weights.length === 1 && <p className="small muted" style={{ margin: 0 }}>Upiši još jednom da vidiš grafikon.</p>}
+        {weights.length === 0 && <p className="small muted" style={{ margin: 0 }}>{readOnly ? 'Još nema upisa.' : 'Upiši prvu težinu dugmetom +.'}</p>}
       </div>
 
-      <Measurements rows={data.measurements} onSaved={reload} />
+      <Measurements rows={data.measurements} onSaved={reload} readOnly={readOnly} />
 
       {weights.length > 0 && (
         <History title="Istorija težine" items={weights} renderItem={(w) => (
@@ -118,7 +121,7 @@ export default function Progress() {
   );
 }
 
-function Measurements({ rows, onSaved }) {
+function Measurements({ rows, onSaved, readOnly }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ waist: '', hips: '', arm: '' });
   const [saving, setSaving] = useState(false);
@@ -152,7 +155,7 @@ function Measurements({ rows, onSaved }) {
     <div className="col" style={{ gap: 10 }}>
       <div className="section-head" style={{ alignItems: 'center' }}>
         <span>Mere</span>
-        <button className="text-btn" aria-expanded={adding} onClick={() => setAdding(!adding)}>{adding ? 'Zatvori' : 'Upiši mere'}</button>
+        {!readOnly && <button className="text-btn" aria-expanded={adding} onClick={() => setAdding(!adding)}>{adding ? 'Zatvori' : 'Upiši mere'}</button>}
       </div>
 
       {adding && (

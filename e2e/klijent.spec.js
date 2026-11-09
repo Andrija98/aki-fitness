@@ -101,6 +101,46 @@ test.describe('trener', () => {
   });
 });
 
+test.describe('trener: klijenti', () => {
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('vidi klijenta sa aktivnošću i njegov napredak, samo za čitanje', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+    const asClient = { token: client.token, method: 'POST' };
+
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+    await rest('weights', { ...asClient, body: { user_id: client.id, date: '2000-01-02', kg: 75 } });
+    await rest('weights', { ...asClient, body: { user_id: client.id, date: '2000-02-01', kg: 72 } });
+    await rest('measurements', { ...asClient, body: { user_id: client.id, date: '2000-01-02', waist_cm: 84 } });
+    await rest('measurements', { ...asClient, body: { user_id: client.id, date: '2000-02-01', waist_cm: 80 } });
+    const session = await rest('sessions', { ...asClient, body: { program_id: LAGANO, workout_id: GORNJI, duration_sec: 600 } });
+    await rest('session_sets', { ...asClient, body: { session_id: session.rows[0].id, exercise_id: SKLEKOVI, set_no: 1, reps: 10 } });
+
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Profil' }).click();
+    await page.getByRole('button', { name: 'Klijenti' }).click();
+    await expect(page.getByRole('heading', { name: 'Klijenti' })).toBeVisible();
+
+    const row = page.getByRole('button', { name: /E2E Klijent/ });
+    await expect(row).toContainText('Snaga i mišići · 1 trening');
+    await expect(row).toContainText('danas');
+    await expect(page.getByRole('button', { name: /^Tester/ })).toHaveCount(0);
+
+    await row.click();
+    await expect(page.getByRole('heading', { name: 'E2E Klijent' })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Grafikon težine: od 75 kg .* do 72 kg/ })).toBeVisible();
+    await expect(page.locator('.measures')).toContainText('−4 cm');
+    await expect(page.getByText('Gornji deo tela')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Upiši težinu' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Upiši mere' })).toHaveCount(0);
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 
@@ -221,6 +261,10 @@ test.describe('prijavljen klijent', () => {
     await page.goto('/#/videi');
     await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Video snimci vežbi' })).toHaveCount(0);
+
+    await page.goto('/#/klijenti');
+    await expect(page.getByRole('heading', { name: 'Zdravo, Tester' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Klijenti' })).toHaveCount(0);
   });
 
   test('Napredak: od praznog stanja do grafikona i razlike u težini', async ({ page }) => {
