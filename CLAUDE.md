@@ -1,6 +1,6 @@
 # Treniraj sa Akijem — PWA za trenera i klijente
 
-Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, kasnije ishrana, napredak i poruke.
+Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, ishrana, napredak sa fotografijama i poruke.
 Plan po fazama: `docs/PLAN.md`. Kako aplikacija radi: `docs/KAKO-RADI.md`. Uputstvo za trenera: `docs/VODIC-ZA-TRENERA.md`. Trenutno: **faza 3 u toku** (trener i komunikacija; sledeće po planu je članarina).
 
 Odgovaraj na srpskom (latinica). Ja sam QA automation inženjer (Java, Selenium, JUnit, Python),
