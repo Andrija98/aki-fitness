@@ -354,3 +354,12 @@ select.text-input { appearance: none; }
 .photo-compare figure { margin: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 0; }
 .photo-compare img { flex: 0 1 auto; min-height: 0; max-height: 100%; width: 100%; object-fit: contain; border-radius: 14px; }
 .photo-compare figcaption { text-align: center; font-size: 13px; font-weight: 700; color: var(--color-neutral-100); }
+
+/* Fotografije u porukama */
+.bubble--photo { padding: 6px 6px 10px; }
+.bubble--photo .bubble-caption, .bubble--photo .bubble-time { display: block; padding-inline: 10px; }
+.bubble-photo { display: block; padding: 0; border: 0; background: none; cursor: pointer; margin-bottom: 6px; }
+.bubble-photo img { display: block; width: 220px; max-width: 100%; max-height: 300px; object-fit: cover; border-radius: 18px; }
+.bubble-photo .small { display: grid; place-items: center; width: 220px; height: 160px; border-radius: 18px; background: var(--color-neutral-300); color: var(--color-text); }
+.chat-photo-btn { width: 52px; height: 52px; flex: none; cursor: pointer; }
+.chat-photo-btn:focus-within { box-shadow: 0 0 0 3px var(--color-accent); }

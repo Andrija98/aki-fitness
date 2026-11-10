@@ -75,6 +75,17 @@ export async function listPhotos(token, userId) {
   return (json ?? []).map((o) => `${userId}/${o.name}`);
 }
 
+// Fotografije iz poruka koje je ovaj e2e nalog poslao, u svim razgovorima koje vidi (klijent: svoj, trener: sve).
+// Polisa dozvoljava brisanje samo e2e nalozima i samo sopstvenih fajlova, pa tuđi fajlovi ostaju netaknuti.
+export async function clearMessagePhotos(token) {
+  const list = async (prefix) => (await storage('object/list/message-photos', { token, method: 'POST', body: { prefix, limit: 1000 } })).json ?? [];
+  const folders = (await list('')).filter((o) => o.id === null).map((o) => o.name);
+  for (const folder of folders) {
+    const files = (await list(folder)).map((o) => `${folder}/${o.name}`);
+    if (files.length) await storage('object/message-photos', { token, method: 'DELETE', body: { prefixes: files } });
+  }
+}
+
 // Vraća nalog na stanje pre onboardinga. Radi kroz RLS, pa može da dira samo svoje redove.
 export async function resetAccount(account) {
   if (!account.email.startsWith('e2e-')) throw new Error('Čišćenje je dozvoljeno samo za e2e naloge.');
@@ -105,6 +116,7 @@ export async function resetAccount(account) {
     const removed = await storage('object/progress-photos', { token, method: 'DELETE', body: { prefixes: files } });
     if (removed.status >= 400) throw new Error(`Čišćenje fotografija nije uspelo: ${JSON.stringify(removed)}`);
   }
+  await clearMessagePhotos(token);
   for (const result of await Promise.all(writes)) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
   }

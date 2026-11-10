@@ -501,20 +501,42 @@ export async function getClient(id) {
 // ---------- Poruke ----------
 // Jedan razgovor po klijentu (client_id). Klijent ne prosleđuje clientId: to je njegov razgovor.
 
-function toMessage(row, me) {
-  return { id: row.id, clientId: row.client_id, body: row.body, createdAt: row.created_at, readAt: row.read_at, mine: row.sender_id === me };
+// Fotografije u porukama: privatan bucket, folder = razgovor ({client_id}/...). Link za prikaz važi sat vremena.
+const MESSAGE_PHOTO_BUCKET = 'message-photos';
+
+function toMessage(row, me, photoUrl = null) {
+  return {
+    id: row.id, clientId: row.client_id, body: row.body, createdAt: row.created_at, readAt: row.read_at, mine: row.sender_id === me,
+    photoPath: row.attachment_path ?? null, photoUrl,
+  };
+}
+
+async function signMessagePhotos(paths) {
+  if (!paths.length) return new Map();
+  const signed = unwrap(await supabase.storage.from(MESSAGE_PHOTO_BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS));
+  return new Map(signed.map((s) => [s.path, s.signedUrl]));
 }
 
 export async function getMessages(clientId) {
   const me = await currentUserId();
   const rows = unwrap(await supabase.from('messages').select('*').eq('client_id', clientId ?? me).order('created_at'));
-  return rows.map((r) => toMessage(r, me));
+  const urls = await signMessagePhotos(rows.map((r) => r.attachment_path).filter(Boolean));
+  return rows.map((r) => toMessage(r, me, urls.get(r.attachment_path) ?? null));
 }
 
-export async function sendMessage(body, clientId) {
+// photo: već smanjen JPEG (lib/image.js) ili ništa. Sa fotografijom tekst može biti prazan.
+// Ako upis poruke ne uspe, fajl ostaje u bucketu (korisnici ne brišu priloge), ali se nigde ne prikazuje.
+export async function sendMessage(body, clientId, photo) {
   const me = await currentUserId();
-  const row = unwrap(await supabase.from('messages').insert({ client_id: clientId ?? me, body }).select().single());
-  return toMessage(row, me);
+  const conversation = clientId ?? me;
+  let path = null;
+  if (photo) {
+    path = `${conversation}/${crypto.randomUUID()}.jpg`;
+    unwrap(await supabase.storage.from(MESSAGE_PHOTO_BUCKET).upload(path, photo, { contentType: 'image/jpeg' }));
+  }
+  const row = unwrap(await supabase.from('messages').insert({ client_id: conversation, body, attachment_path: path }).select().single());
+  const urls = await signMessagePhotos(path ? [path] : []);
+  return toMessage(row, me, urls.get(path) ?? null);
 }
 
 // Primalac označava pročitano. RLS sam preskače poruke koje ovaj korisnik ne sme da označi.
@@ -537,7 +559,7 @@ export async function getUnreadCount(isTrainer) {
 export async function getInbox() {
   const [clients, rows] = await Promise.all([
     getClients(),
-    supabase.from('messages').select('client_id, sender_id, body, created_at, read_at').order('created_at', { ascending: false }).limit(500).then(unwrap),
+    supabase.from('messages').select('client_id, sender_id, body, attachment_path, created_at, read_at').order('created_at', { ascending: false }).limit(500).then(unwrap),
   ]);
   return clients
     .map((c) => {
@@ -545,7 +567,7 @@ export async function getInbox() {
       return {
         id: c.id,
         name: c.name,
-        lastBody: own[0]?.body ?? null,
+        lastBody: own[0] ? (own[0].body || (own[0].attachment_path ? 'Fotografija' : '')) : null,
         lastAt: own[0]?.created_at ?? null,
         unread: own.filter((r) => !r.read_at && r.sender_id === c.id).length,
       };
@@ -567,7 +589,13 @@ export function onNewMessage(clientId, callback) {
       schema: 'public',
       table: 'messages',
       ...(clientId ? { filter: `client_id=eq.${clientId}` } : {}),
-    }, (payload) => callback(toMessage(payload.new, me)))
+    }, async (payload) => {
+      // Realtime šalje samo red; link za fotografiju se pravi ovde. Ako ne uspe, poruka stiže bez slike
+      // (pojaviće se pri sledećem učitavanju razgovora).
+      const path = payload.new.attachment_path;
+      const urls = path ? await signMessagePhotos([path]).catch(() => new Map()) : new Map();
+      callback(toMessage(payload.new, me, urls.get(path) ?? null));
+    })
     .subscribe();
   return () => { supabase.removeChannel(channel); };
 }

@@ -9,12 +9,15 @@ import { getMessages, markMessagesRead, onNewMessage, sendMessage } from '../dat
 import { formatDayLabel, formatTime, dateKey } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import PhotoViewer from '../components/PhotoViewer.jsx';
+import { compressImage } from '../lib/image.js';
 
 export default function Chat({ clientId, header, emptyText }) {
   const { data, error, reload } = useData(() => getMessages(clientId), [clientId]);
   const [messages, setMessages] = useState(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [openPhoto, setOpenPhoto] = useState(null);
   const endRef = useRef(null);
 
   useEffect(() => { if (data) setMessages(data); }, [data]);
@@ -47,20 +50,40 @@ export default function Chat({ clientId, header, emptyText }) {
   if (error && !messages) return <LoadError onRetry={reload} />;
   if (!messages) return null;
 
-  async function send(e) {
-    e.preventDefault();
+  // photo: već smanjen JPEG; tekst iz polja ide uz fotografiju kao natpis.
+  async function deliver(photo) {
     const body = text.trim();
-    if (!body || sending) return;
+    if ((!body && !photo) || sending) return;
     setSending(true);
     try {
-      const saved = await sendMessage(body, clientId);
+      const saved = await sendMessage(body, clientId, photo);
       setMessages((list) => (list.some((x) => x.id === saved.id) ? list : [...list, saved]));
-      setText('');
+      // Briše se samo poslato: ako je korisnik u međuvremenu kucao dalje, taj tekst ostaje.
+      setText((current) => (current.trim() === body ? '' : current));
     } catch {
       toast('Poruka nije poslata. Proveri internet.');
     } finally {
       setSending(false);
     }
+  }
+
+  function send(e) {
+    e.preventDefault();
+    deliver(null);
+  }
+
+  async function pickPhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || sending) return;
+    let photo;
+    try {
+      photo = await compressImage(file);
+    } catch {
+      toast('Ovaj format slike nije podržan.');
+      return;
+    }
+    deliver(photo);
   }
 
   return (
@@ -74,8 +97,13 @@ export default function Chat({ clientId, header, emptyText }) {
           return (
             <div key={m.id} className="col" style={{ gap: 10 }}>
               {newDay && <span className="chat-day">{formatDayLabel(m.createdAt)}</span>}
-              <div className={`bubble ${m.mine ? 'bubble--out' : 'bubble--in'}`}>
-                {m.body}
+              <div className={`bubble ${m.mine ? 'bubble--out' : 'bubble--in'}${m.photoPath ? ' bubble--photo' : ''}`}>
+                {m.photoPath && (
+                  <button type="button" className="bubble-photo" onClick={() => setOpenPhoto(m)} aria-label="Otvori fotografiju">
+                    {m.photoUrl ? <img src={m.photoUrl} alt="" /> : <span className="small">Fotografija</span>}
+                  </button>
+                )}
+                {m.photoPath ? (m.body && <span className="bubble-caption">{m.body}</span>) : m.body}
                 <span className="bubble-time">{formatTime(m.createdAt)}</span>
               </div>
             </div>
@@ -85,12 +113,21 @@ export default function Chat({ clientId, header, emptyText }) {
       </div>
 
       <form className="chat-composer" onSubmit={send}>
+        <label className="round-btn chat-photo-btn">
+          <input type="file" accept="image/*" className="sr-only" onChange={pickPhoto} disabled={sending} aria-label="Priloži fotografiju" />
+          <Icon name="image" size={20} />
+        </label>
         <input className="text-input" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000}
           placeholder="Napiši poruku…" aria-label="Poruka" />
         <button className="round-btn round-btn--accent" style={{ width: 52, height: 52 }} disabled={!text.trim() || sending} aria-label="Pošalji">
           <Icon name="arrowUp" size={20} />
         </button>
       </form>
+
+      {openPhoto && (
+        <PhotoViewer url={openPhoto.photoUrl} title={`Fotografija · ${formatDayLabel(openPhoto.createdAt)} ${formatTime(openPhoto.createdAt)}`}
+          alt="Fotografija iz poruke" onClose={() => setOpenPhoto(null)} />
+      )}
     </div>
   );
 }

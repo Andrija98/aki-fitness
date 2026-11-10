@@ -387,6 +387,35 @@ test('fotografije napretka: fajl i red vidi samo vlasnik i trener, menja samo vl
   expect(await listPhotos(a.token, a.id)).toEqual([]);
 });
 
+test('fotografije u porukama: samo učesnici razgovora, prilog samo iz tog razgovora', async () => {
+  const path = `${a.id}/e2e-poruka.jpg`;
+  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+  const upload = (token, p) => storage(`object/message-photos/${p}`, { token, method: 'POST', body: bytes });
+  const read = (token) => storage(`object/authenticated/message-photos/${path}`, { token });
+  const send = (account, body) => rest('messages', { token: account.token, method: 'POST', body: { client_id: a.id, ...body } });
+
+  expect((await upload(a.token, path)).status).toBe(200);
+  expect((await send(a, { body: '', attachment_path: path })).status).toBe(201); // sa fotografijom tekst nije obavezan
+  expect((await read(a.token)).status).toBe(200);
+  expect((await read(trainer.token)).status).toBe(200);
+  expect((await read(b.token)).status).not.toBe(200);
+  expect((await read(undefined)).status).not.toBe(200);
+
+  expect((await upload(b.token, `${a.id}/e2e-hak.jpg`)).status).not.toBe(200);
+  expect((await send(a, { body: '' })).status).toBeGreaterThanOrEqual(400); // ni teksta ni fotografije
+  expect((await send(a, { body: 'tuđ prilog', attachment_path: `${b.id}/x.jpg` })).status).toBeGreaterThanOrEqual(400);
+  // Prilog se ne menja naknadno (izmena je dozvoljena samo za read_at).
+  const changed = await rest(`messages?client_id=eq.${a.id}`, { token: a.token, method: 'PATCH', body: { attachment_path: `${a.id}/drugi.jpg` } });
+  expect(changed.status).toBeGreaterThanOrEqual(400);
+  await storage('object/message-photos', { token: b.token, method: 'DELETE', body: { prefixes: [path] } });
+  expect((await read(a.token)).status).toBe(200);
+
+  await resetAccount(ACCOUNT_A); // e2e nalog briše svoje fajlove i poruke
+  // Proverava se lista, ne čitanje: Supabase CDN još kratko vraća obrisan fajl iz keša onome ko ga je već čitao.
+  const left = await storage('object/list/message-photos', { token: trainer.token, method: 'POST', body: { prefix: a.id } });
+  expect(left.json).toEqual([]);
+});
+
 test('pristanak na privatnost menja samo vlasnik', async () => {
   const changed = await rest(`profiles?id=eq.${a.id}`, { token: b.token, method: 'PATCH', body: { privacy_accepted_at: null } });
   expect(changed.rows).toEqual([]);

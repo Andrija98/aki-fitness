@@ -407,6 +407,61 @@ test.describe('poruke', () => {
     await resetAccount(ACCOUNT_TRAINER);
   });
 
+  test('fotografije u porukama stižu uživo i otvaraju se preko celog ekrana', async ({ page, browser }) => {
+    const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    const photo = { name: 'obrok.png', mimeType: 'image/png', buffer: PNG };
+    const loaded = (bubble) => bubble.locator('img').evaluate((img) => img.complete && img.naturalWidth);
+    const client = await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+
+    await loginUi(page, ACCOUNT_A);
+    await page.getByRole('link', { name: 'Aki', exact: true }).click();
+    await expect(page.getByText('Pitaj Akija bilo šta')).toBeVisible();
+
+    const trainerContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const trainer = await trainerContext.newPage();
+    await loginUi(trainer, ACCOUNT_TRAINER);
+    await finishOnboarding(trainer);
+    await trainer.goto(`/#/poruke/${client.id}`);
+    await expect(trainer.getByLabel('Poruka')).toBeVisible();
+
+    // Kucanje dok prethodna poruka još putuje: kad ona stigne, novi tekst ne sme da nestane iz polja.
+    await page.getByLabel('Poruka').fill('Evo');
+    await page.getByRole('button', { name: 'Pošalji', exact: true }).click();
+    await page.getByLabel('Poruka').fill('Današnji ručak');
+    await expect(page.locator('.bubble--out')).toHaveCount(1);
+    await expect(page.getByLabel('Poruka')).toHaveValue('Današnji ručak');
+
+    // Klijent šalje fotografiju sa natpisom (tekst iz polja ide uz nju).
+    await page.getByLabel('Priloži fotografiju').setInputFiles(photo);
+    const sent = page.locator('.bubble--out').last();
+    await expect(sent).toContainText('Današnji ručak');
+    await expect.poll(() => loaded(sent)).toBeGreaterThan(0);
+    await expect(page.getByLabel('Poruka')).toHaveValue('');
+
+    // Trener je dobija uživo, sa slikom, i otvara je.
+    const received = trainer.locator('.bubble--in').last();
+    await expect(received).toContainText('Današnji ručak');
+    await expect.poll(() => loaded(received)).toBeGreaterThan(0);
+    await received.getByRole('button', { name: 'Otvori fotografiju' }).click();
+    const viewer = trainer.getByRole('dialog', { name: /^Fotografija/ });
+    await expect(viewer.getByRole('img')).toBeVisible();
+    await viewer.getByRole('button', { name: 'Zatvori' }).click();
+
+    // Trener odgovara samo fotografijom, bez teksta.
+    await trainer.getByLabel('Priloži fotografiju').setInputFiles(photo);
+    await expect.poll(() => loaded(page.locator('.bubble--in').last())).toBeGreaterThan(0);
+    const rows = (await rest(`messages?client_id=eq.${client.id}&select=body,attachment_path&order=created_at`, { token: client.token })).rows;
+    expect(rows.map((r) => r.body)).toEqual(['Evo', 'Današnji ručak', '']);
+    expect(rows.slice(1).every((r) => r.attachment_path.startsWith(`${client.id}/`))).toBe(true);
+
+    // Poslednja poruka u sandučetu bez teksta piše "Fotografija".
+    await trainer.goto('/#/poruke');
+    await expect(trainer.getByRole('button', { name: /E2E Klijent/ })).toContainText('Fotografija');
+    await trainerContext.close();
+  });
+
   test('klijent i trener se dopisuju uživo, sa nepročitanim na tabu', async ({ page, browser }) => {
     const client = await resetAccount(ACCOUNT_A);
     const trainerSession = await resetAccount(ACCOUNT_TRAINER);

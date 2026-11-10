@@ -8,6 +8,7 @@ import { addProgressPhoto, deleteProgressPhoto, getProgressPhotos } from '../dat
 import { compressImage } from '../lib/image.js';
 import { formatShortDate } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
+import PhotoViewer from '../components/PhotoViewer.jsx';
 
 export default function ProgressPhotos({ userId, readOnly }) {
   const { data: photos, error, reload } = useData(() => getProgressPhotos(userId), [userId]);
@@ -104,12 +105,8 @@ export default function ProgressPhotos({ userId, readOnly }) {
 function Viewer({ photo, readOnly, onClose, onDelete }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="photo-viewer" role="dialog" aria-modal="true" aria-label={`Fotografija od ${formatShortDate(photo.date)}`}>
-      <div className="row between">
-        <span style={{ fontWeight: 700 }}>{formatShortDate(photo.date)}</span>
-        <button type="button" className="round-btn" onClick={onClose} aria-label="Zatvori"><Icon name="x" /></button>
-      </div>
-      {photo.url && <img src={photo.url} alt={`Fotografija napretka od ${formatShortDate(photo.date)}`} />}
+    <PhotoViewer url={photo.url} title={`Fotografija od ${formatShortDate(photo.date)}`}
+      alt={`Fotografija napretka od ${formatShortDate(photo.date)}`} onClose={onClose}>
       {!readOnly && (confirming ? (
         <div className="row" style={{ gap: 10 }}>
           <button type="button" className="pill-btn" style={{ flex: 1 }} onClick={() => setConfirming(false)}>Ne</button>
@@ -118,7 +115,7 @@ function Viewer({ photo, readOnly, onClose, onDelete }) {
       ) : (
         <button type="button" className="text-btn" style={{ color: 'var(--color-neutral-300)' }} onClick={() => setConfirming(true)}>Obriši fotografiju</button>
       ))}
-    </div>
+    </PhotoViewer>
   );
 }
 
