@@ -134,7 +134,7 @@ function Editor({ workouts, program, clientCount, isNew }) {
         </div>
         <div>
           <label className="field-label" htmlFor="program-description">Opis</label>
-          <textarea id="program-description" className="text-input editor-textarea" maxLength={400} value={form.description} onChange={(e) => set('description', e.target.value)} />
+          <textarea id="program-description" className="text-input editor-textarea" maxLength={2000} value={form.description} onChange={(e) => set('description', e.target.value)} />
         </div>
         <div className="editor-grid">
           <div>

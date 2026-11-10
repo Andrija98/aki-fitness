@@ -106,7 +106,7 @@ export async function getProgram(id) {
 export async function getWorkout(id) {
   const result = await supabase
     .from('workouts')
-    .select('id, title, minutes, equipment, workout_items(position, exercise_id, sets, reps, seconds, kg, rest_sec, exercises(name, video_url, cue))')
+    .select('id, title, minutes, equipment, workout_items(position, exercise_id, sets, reps, reps_max, seconds, kg, rest_sec, note, exercises(name, video_url, cue))')
     .eq('id', id)
     .maybeSingle();
   if (result.error?.code === '22P02') return null;
@@ -121,9 +121,11 @@ export async function getWorkout(id) {
       exerciseId: it.exercise_id,
       sets: it.sets,
       reps: it.reps,
+      repsMax: it.reps_max,
       seconds: it.seconds,
       kg: it.kg,
       rest: it.rest_sec,
+      note: it.note,
       name: it.exercises.name,
       videoUrl: it.exercises.video_url ?? '',
       cue: it.exercises.cue,
@@ -170,7 +172,7 @@ export async function getWorkoutUsage(id) {
   return new Set(rows.map((r) => r.program_id)).size;
 }
 
-// workout = { id?, title, minutes, equipment, items: [{ exerciseId, sets, reps, seconds, kg, rest }] }
+// workout = { id?, title, minutes, equipment, items: [{ exerciseId, sets, reps, repsMax, seconds, kg, rest, note }] }
 // Prvo upisujemo nove stavke, pa brišemo stare: klijent nikad ne vidi prazan trening.
 // Stare stavke čitamo tik pre upisa, pa ponovno čuvanje posle prekida samo ispravi višak.
 export async function saveWorkout(workout) {
@@ -191,9 +193,11 @@ export async function saveWorkout(workout) {
     position: i + 1,
     sets: it.sets,
     reps: it.reps,
+    reps_max: it.repsMax ?? null,
     seconds: it.seconds,
     kg: it.kg,
     rest_sec: it.rest,
+    note: it.note ?? null,
   })));
   if (error) {
     if (isNew) await supabase.from('workouts').delete().eq('id', workoutId); // da ponovni pokušaj ne napravi duplikat

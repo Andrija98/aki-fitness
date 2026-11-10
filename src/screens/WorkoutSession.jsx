@@ -7,7 +7,7 @@ import { useData } from '../lib/useData.js';
 import { navigate, back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
 import { getWorkout, getLastSets, saveSession } from '../data/api.js';
-import { formatClock, formatDuration, formatNumber } from '../lib/format.js';
+import { formatClock, formatDuration, formatNumber, formatTarget } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import { Striped, VideoPlayer } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
@@ -157,6 +157,8 @@ export default function WorkoutSession({ programId, workoutId }) {
         <div className="col" style={{ gap: 4 }}>
           <span className="small" style={{ fontWeight: 700, color: 'var(--color-accent-700)' }}>{workout.title}</span>
           <h1 style={{ margin: 0, fontSize: 28 }}>{item.name}</h1>
+          <span className="small" style={{ fontWeight: 700 }}>{formatTarget(item)}</span>
+          {item.note && <p className="item-note">{item.note}</p>}
           {item.cue && <span className="small muted">{item.cue}</span>}
         </div>
 

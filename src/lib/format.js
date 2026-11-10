@@ -75,6 +75,16 @@ export function formatClock(sec) {
 
 export const GOAL_LABEL = { mrsavljenje: 'Mršavljenje', snaga: 'Snaga i mišići', kondicija: 'Kondicija i energija' };
 
+// Cilj stavke treninga, npr. "4 serije × 10–12 ponavljanja" ili "3 serije × 30 s".
+export function formatTarget({ sets, reps, repsMax, seconds }) {
+  const lastDigit = sets % 10;
+  const teens = sets % 100 >= 12 && sets % 100 <= 14;
+  const setWord = lastDigit === 1 && sets % 100 !== 11 ? 'serija' : lastDigit >= 2 && lastDigit <= 4 && !teens ? 'serije' : 'serija';
+  if (seconds != null) return `${sets} ${setWord} × ${seconds} s`;
+  const amount = repsMax ? `${reps}–${repsMax}` : `${reps}`;
+  return `${sets} ${setWord} × ${amount} ponavljanja`;
+}
+
 export function formatDaysAgo(d) {
   const startOfDay = (x) => new Date(dateKey(x) + 'T12:00:00').getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);

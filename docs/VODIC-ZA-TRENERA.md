@@ -29,12 +29,18 @@ pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predl
 ## 3. Treninzi i programi
 
 **Profil → Uređivanje treninga:** trening je spisak vežbi sa brojem serija i ponavljanja, trajanjem i opremom.
-Ista vežba ne može dvaput u istom treningu.
+- **Do (raspon):** za "10–12 ponavljanja" upiši 10 u Ponavljanja i 12 u Do. Prazno znači tačan broj.
+- **Napomena za ovaj trening:** npr. "10 po nozi", "opcija 2: bench press", "superset sa sledećom vežbom". Klijent je vidi
+  ispod naziva vežbe, samo u ovom treningu (savet vežbe važi za sve programe).
+- Ista vežba ne može dvaput u istom treningu. Za superset sa vežbom koja se ponavlja napravi posebnu vežbu
+  (npr. "Pregib za biceps sa gumom").
 
 **Profil → Uređivanje programa:** program je raspored treninga kroz nedelje (npr. 4 nedelje, 3 treninga nedeljno),
 za određeno mesto (kod kuće, teretana) i nivo.
 - **Nacrt** klijenti ne vide. Kad je program spreman, uključi **Objavljen**.
 - Kad menjaš program koji klijenti već rade, izmena važi odmah, a njihovi odrađeni treninzi ostaju.
+- **Kućni trening muškarci** (3 treninga nedeljno, 12 nedelja) je unet kao **nacrt**. Pre objavljivanja dodaj videe za nove
+  vežbe (Profil → Vežbe: one bez videa) i pregledaj opis i napomene.
 
 ---
 

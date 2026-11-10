@@ -52,7 +52,7 @@ export default function ProgramDetail({ programId }) {
           <span className="tag tag-neutral">{program.level}</span>
         </div>
         <h1 className="screen-title">{program.title}</h1>
-        <p className="muted" style={{ margin: 0 }}>{program.description}</p>
+        <p className="muted" style={{ margin: 0, whiteSpace: 'pre-line' }}>{program.description}</p>
       </div>
 
       <div className="stat-grid">

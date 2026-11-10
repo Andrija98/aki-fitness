@@ -135,7 +135,12 @@ Isti ekran služi za izmenu ciljeva (`#/ciljevi`).
 ### 5.3 Treninzi
 Program ima raspored treninga (`program_schedule`), trening ima vežbe (`workout_items`), vežba ima YouTube video
 (unlisted link, prikaz preko `youtube-nocookie.com`). Klijent je upisan u jedan aktivni program (`enrollments`).
-Sesija treninga (`WorkoutSession.jsx`): vežba po vežba, upis ponavljanja i kilaže, pauza sa odbrojavanjem, rezime;
+Stavka treninga ima serije, ponavljanja (ili sekunde), opcioni **raspon** (`reps_max`, prikaz "4 serije × 10–12 ponavljanja"),
+pauzu i **napomenu samo za taj trening** (`note`: "10 po nozi", "opcija 2: bench press", superset). Napomena je uz stavku, a ne
+u savetu vežbe, jer je savet zajednički za sve programe. Ista vežba ne sme dvaput u istom treningu (sesija broji serije po vežbi),
+pa za superset sa vežbom koja se ponavlja postoji posebna vežba (npr. "Pregib za biceps sa gumom").
+Superset za sada nema poseban tok: vežbe idu jedna za drugom, a napomena objašnjava naizmenično izvođenje.
+Sesija treninga (`WorkoutSession.jsx`): vežba po vežba, cilj i napomena ispod naziva, upis ponavljanja i kilaže, pauza sa odbrojavanjem, rezime;
 na kraju se čuva `sessions` + `session_sets`. Vežbe se ne brišu, jer su odrađene serije vezane za njih.
 
 ### 5.4 Napredak
@@ -218,7 +223,9 @@ Za brisanje starog keša na svim telefonima povećaj `VERSION` u `sw.js`.
 
 SQL fajlovi u `docs/`, pokreću se ručno u Supabase SQL Editoru, **ovim redom**:
 `supabase-schema.sql`, `-seed`, `-measurements`, `-messages`, `-nutrition-targets`, `-foods`, `-foods-seed`,
-`-food-preferences`, `-meal-plans`, `-privacy`, `-progress-photos`, `-message-photos`, `-hardening` (poslednji).
+`-food-preferences`, `-meal-plans`, `-privacy`, `-progress-photos`, `-message-photos`, `-workout-item-details`,
+`-hardening` (poslednji). Sadržaj programa (vežbe, treninzi, program) dolazi posle šeme, npr.
+`supabase-program-kucni-muskarci.sql`; ti fajlovi su bezbedni za ponovno pokretanje (`on conflict do nothing`).
 
 Svaki fajl na vrhu ima komentar šta dodaje i zašto. Ako je fajl već pokrenut, a kasnije je ispravljen, ispravka za
 postojeću bazu se daje posebno (glavni fajl ostaje ispravan za novu instalaciju).

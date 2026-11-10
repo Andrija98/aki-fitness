@@ -45,8 +45,10 @@ function Editor({ exercises, workout, usage, isNew }) {
     sets: String(it.sets),
     mode: it.seconds != null ? 'seconds' : 'reps',
     amount: String(it.seconds ?? it.reps ?? ''),
+    amountMax: it.repsMax != null ? String(it.repsMax) : '',
     kg: it.kg != null ? String(it.kg) : '',
     rest: String(it.rest ?? 60),
+    note: it.note ?? '',
   })));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,7 +59,7 @@ function Editor({ exercises, workout, usage, isNew }) {
   function addItem() {
     const used = new Set(items.map((it) => it.exerciseId));
     const next = exercises.find((e) => !used.has(e.id)) ?? exercises[0];
-    setItems([...items, { key: newKey(), exerciseId: next.id, sets: '3', mode: 'reps', amount: '10', kg: '', rest: '60' }]);
+    setItems([...items, { key: newKey(), exerciseId: next.id, sets: '3', mode: 'reps', amount: '10', amountMax: '', kg: '', rest: '60', note: '' }]);
   }
 
   function move(index, delta) {
@@ -82,6 +84,11 @@ function Editor({ exercises, workout, usage, isNew }) {
       if (!(sets >= 1 && sets <= 20)) return `${label}: serije moraju biti od 1 do 20.`;
       const amount = wholeNumber(it.amount);
       if (!(amount >= 1 && amount <= 999)) return `${label}: unesi ${it.mode === 'seconds' ? 'sekunde' : 'ponavljanja'} (1–999).`;
+      // Gornja granica raspona ("10–12"): samo za ponavljanja, prazno = tačan broj.
+      const amountMax = it.mode === 'reps' && it.amountMax.trim() !== '' ? wholeNumber(it.amountMax) : null;
+      if (amountMax !== null && !(amountMax > amount && amountMax <= 999)) return `${label}: "do" mora biti veće od ${amount} (ili prazno).`;
+      const note = it.note.trim();
+      if (note.length > 300) return `${label}: napomena može imati najviše 300 znakova.`;
       const kg = it.kg.trim() === '' ? null : decimal(it.kg);
       if (kg !== null && !(kg >= 0 && kg <= 999.9)) return `${label}: kilaža mora biti od 0 do 999,9.`;
       const rest = wholeNumber(it.rest);
@@ -90,9 +97,11 @@ function Editor({ exercises, workout, usage, isNew }) {
         exerciseId: it.exerciseId,
         sets,
         reps: it.mode === 'reps' ? amount : null,
+        repsMax: amountMax,
         seconds: it.mode === 'seconds' ? amount : null,
         kg,
         rest,
+        note: note || null,
       });
     }
     return { id: workout?.id, title, minutes, equipment: form.equipment.trim() || null, items: prepared };
@@ -168,8 +177,17 @@ function Editor({ exercises, workout, usage, isNew }) {
               <div className="editor-grid">
                 <NumberField label="Serije" n={n} value={it.sets} onChange={(v) => update(it.key, { sets: v })} />
                 <NumberField label={amountLabel} n={n} value={it.amount} onChange={(v) => update(it.key, { amount: v })} />
+                {it.mode === 'reps' && (
+                  <NumberField label="Do (raspon)" n={n} value={it.amountMax} onChange={(v) => update(it.key, { amountMax: v })} placeholder="—" />
+                )}
                 <NumberField label="Kilaža (kg)" n={n} value={it.kg} decimal onChange={(v) => update(it.key, { kg: v })} placeholder="—" />
                 <NumberField label="Pauza (s)" n={n} value={it.rest} onChange={(v) => update(it.key, { rest: v })} />
+              </div>
+
+              <div>
+                <label className="field-label" htmlFor={`note-${n}`}>Napomena za ovaj trening</label>
+                <input id={`note-${n}`} className="text-input" style={{ background: 'var(--color-neutral-100)' }} maxLength={300}
+                  value={it.note} onChange={(e) => update(it.key, { note: e.target.value })} placeholder="npr. 10 po nozi; opcija 2: bench press" />
               </div>
 
               <div className="row" style={{ gap: 8 }}>

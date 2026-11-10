@@ -196,10 +196,12 @@ test.describe('trener: treninzi', () => {
   // Test treninzi nose prefiks E2E, nisu ni u jednom programu (klijenti ih ne vide) i brišu se zajedno sa stavkama.
   const removeTestWorkouts = () => rest('workouts?title=like.E2E*', { token: trainer.token, method: 'DELETE' });
   const savedItems = async (title) => {
-    const result = await rest(`workouts?title=eq.${encodeURIComponent(title)}&select=workout_items(position,reps,seconds,kg,rest_sec,exercises(name))`, { token: trainer.token });
+    const result = await rest(`workouts?title=eq.${encodeURIComponent(title)}&select=workout_items(position,reps,reps_max,seconds,kg,rest_sec,note,exercises(name))`, { token: trainer.token });
     expect(result.rows).toHaveLength(1);
     return result.rows[0].workout_items.sort((x, y) => x.position - y.position)
-      .map((it) => ({ position: it.position, name: it.exercises.name, reps: it.reps, seconds: it.seconds, kg: it.kg, rest: it.rest_sec }));
+      .map((it) => ({
+        position: it.position, name: it.exercises.name, reps: it.reps, repsMax: it.reps_max, seconds: it.seconds, kg: it.kg, rest: it.rest_sec, note: it.note,
+      }));
   };
 
   // beforeAll, a ne u testu: posle neuspelog testa Playwright pokreće nov proces i promenljive kreću od nule.
@@ -246,14 +248,22 @@ test.describe('trener: treninzi', () => {
     await expect(alert).toHaveText('Vežba 1: serije moraju biti od 1 do 20.');
     await page.getByLabel('Serije, vežba 1').fill('4');
 
+    // Raspon ponavljanja ("10–12") i napomena samo za ovaj trening.
+    await page.getByLabel('Do (raspon), vežba 1').fill('8');
+    await save.click();
+    await expect(alert).toHaveText('Vežba 1: "do" mora biti veće od 10 (ili prazno).');
+    await page.getByLabel('Do (raspon), vežba 1').fill('12');
+    await expect(page.getByLabel('Do (raspon), vežba 2')).toHaveCount(0); // vežba na sekunde nema raspon
+    await page.locator('#note-1').fill('Opcija 2: sklek');
+
     await page.getByRole('button', { name: 'Pomeri gore: Plank' }).click();
     await save.click();
     await expect(page.getByText('Trening sačuvan')).toBeVisible();
     await expect(page.getByRole('button', { name: /E2E Trening/ })).toContainText('2 vežbe');
 
     expect(await savedItems('E2E Trening')).toEqual([
-      { position: 1, name: 'Plank', reps: null, seconds: 45, kg: null, rest: 60 },
-      { position: 2, name: 'Bench press', reps: 10, seconds: null, kg: 42.5, rest: 60 },
+      { position: 1, name: 'Plank', reps: null, repsMax: null, seconds: 45, kg: null, rest: 60, note: null },
+      { position: 2, name: 'Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
     ]);
 
     // Izmena: uklanjamo vežbu i menjamo naziv. Stare stavke moraju da nestanu.
@@ -264,9 +274,16 @@ test.describe('trener: treninzi', () => {
     await save.click();
     // Ne čekamo poruku "Trening sačuvan": ona može da ostane od prethodnog čuvanja. Lista se prikaže tek kad je sve upisano.
     await expect(page.getByRole('button', { name: /E2E Izmenjen/ })).toContainText('1 vežba');
+    // Raspon i napomena su se učitali u editor i sačuvali ponovo.
     expect(await savedItems('E2E Izmenjen')).toEqual([
-      { position: 1, name: 'Bench press', reps: 10, seconds: null, kg: 42.5, rest: 60 },
+      { position: 1, name: 'Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
     ]);
+
+    // Klijent u treningu vidi cilj sa rasponom i napomenu.
+    const workoutId = (await rest('workouts?title=eq.E2E%20Izmenjen&select=id', { token: trainer.token })).rows[0].id;
+    await page.goto(`/#/trening/${LAGANO}/${workoutId}`);
+    await expect(page.getByText('4 serije × 10–12 ponavljanja')).toBeVisible();
+    await expect(page.locator('.item-note')).toHaveText('Opcija 2: sklek');
   });
 
   test('trening iz programa prikazuje upozorenje', async ({ page }) => {
