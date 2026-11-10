@@ -37,13 +37,14 @@ export default function PrivacyPolicy() {
           <li><strong>Podaci o telu i zdravlju:</strong> pol, godina rođenja, visina, težina, telesne mere i koliko si aktivan.</li>
           <li><strong>Treninzi:</strong> koje treninge si odradio, serije, ponavljanja i trajanje.</li>
           <li><strong>Ishrana:</strong> dnevni cilj, namirnice koje voliš, plan obroka i obroci koje si označio kao pojedene.</li>
-          <li><strong>Poruke</strong> koje razmenjuješ sa trenerom.</li>
+          <li><strong>Fotografije napretka</strong> koje sam dodaš. Čuvaju se u privatnom skladištu i prikazuju samo preko linka koji važi sat vremena.</li>
+          <li><strong>Poruke</strong> koje razmenjuješ sa trenerom, uključujući fotografije koje pošalješ.</li>
         </ul>
       </Section>
 
       <Section title="Zašto i na osnovu čega">
         <p>Podatke koristimo samo da bi aplikacija radila: plan treninga i ishrane, praćenje napretka i dopisivanje sa trenerom.
-          Podatke o telu i zdravlju obrađujemo na osnovu tvog <strong>izričitog pristanka</strong>, koji daješ pri prvoj prijavi.
+          Podatke o telu i zdravlju, uključujući fotografije napretka, obrađujemo na osnovu tvog <strong>izričitog pristanka</strong>, koji daješ pri prvoj prijavi.
           Ne koristimo ih za reklame, ne prodajemo ih i ne delimo ih ni sa kim van onoga što je navedeno ispod.</p>
       </Section>
 
@@ -51,7 +52,7 @@ export default function PrivacyPolicy() {
         <p>Tvoje podatke vidiš ti i trener ({TRAINER_NAME}). Drugi korisnici ih ne vide; to obezbeđuju pravila same baze, ne samo aplikacija.</p>
         <p>Za rad aplikacije koristimo ove pružaoce usluga:</p>
         <ul>
-          <li><strong>Supabase</strong>: baza podataka i prijava. Podaci se čuvaju u Evropskoj uniji (Irska).</li>
+          <li><strong>Supabase</strong>: baza podataka, skladište fotografija i prijava. Podaci se čuvaju u Evropskoj uniji (Irska).</li>
           <li><strong>Netlify</strong>: isporučuje samu aplikaciju. Ne čuva podatke koje uneseš, ali kao svaki server vidi tehničke podatke zahteva (npr. IP adresu).</li>
           <li><strong>Google Fonts</strong>: slova koja aplikacija koristi; Google pri učitavanju vidi tvoju IP adresu.</li>
           <li><strong>YouTube</strong>: video snimci vežbi, u režimu bez kolačića za praćenje. Kad pokreneš video, YouTube (Google) dobija tehničke podatke o pregledu.</li>

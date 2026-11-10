@@ -326,3 +326,31 @@ select.text-input { appearance: none; }
 .policy p, .policy ul { margin: 0; line-height: 1.55; }
 .policy ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .policy a { color: var(--color-accent-700); font-weight: 600; }
+
+/* Fotografije napretka */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.photo-thumb {
+  position: relative; aspect-ratio: 3 / 4; padding: 0; border: 0; border-radius: 18px; overflow: hidden; cursor: pointer;
+  background: var(--color-surface);
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-thumb.on { box-shadow: inset 0 0 0 3px var(--color-accent); }
+.photo-thumb.on img { opacity: 0.75; }
+.photo-date {
+  position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  background: var(--color-bg); color: var(--color-text);
+}
+.photo-add { background: var(--color-surface); color: var(--color-text); cursor: pointer; }
+.photo-add:focus-within { box-shadow: 0 0 0 3px var(--color-accent); }
+.photo-viewer {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; gap: 14px;
+  padding: calc(16px + var(--safe-t)) 18px calc(18px + var(--safe-b));
+  background: var(--color-neutral-900); color: var(--color-neutral-100);
+}
+.photo-viewer > img { flex: 1; min-height: 0; width: 100%; object-fit: contain; border-radius: 18px; }
+.photo-compare { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Slika zauzima samo koliko joj treba (do visine ekrana), pa datum stoji odmah ispod nje. */
+.photo-compare figure { margin: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 0; }
+.photo-compare img { flex: 0 1 auto; min-height: 0; max-height: 100%; width: 100%; object-fit: contain; border-radius: 14px; }
+.photo-compare figcaption { text-align: center; font-size: 13px; font-weight: 700; color: var(--color-neutral-100); }

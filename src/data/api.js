@@ -292,17 +292,18 @@ export async function saveProfile(profile) {
   return getProfile();
 }
 
-// Kada je korisnik prihvatio politiku privatnosti (ISO tekst), ili null ako nije.
+// Pristanak na politiku privatnosti: { acceptedAt, version } ili null ako ga nikad nije dao.
 export async function getPrivacyConsent() {
   const userId = await currentUserId();
-  const row = unwrap(await supabase.from('profiles').select('privacy_accepted_at').eq('id', userId).maybeSingle());
-  return row?.privacy_accepted_at ?? null;
+  const row = unwrap(await supabase.from('profiles').select('privacy_accepted_at, privacy_version').eq('id', userId).maybeSingle());
+  if (!row?.privacy_accepted_at) return null;
+  return { acceptedAt: row.privacy_accepted_at, version: row.privacy_version ?? 1 };
 }
 
-export async function acceptPrivacy() {
+export async function acceptPrivacy(version) {
   const userId = await currentUserId();
   const rows = unwrap(await supabase.from('profiles')
-    .update({ privacy_accepted_at: new Date().toISOString() }).eq('id', userId).select('id'));
+    .update({ privacy_accepted_at: new Date().toISOString(), privacy_version: version }).eq('id', userId).select('id'));
   if (!rows.length) throw new Error('Pristanak nije sačuvan.');
 }
 
@@ -437,6 +438,42 @@ export async function saveMeasurements(values) {
   if (values.hips != null) row.hips_cm = values.hips;
   if (values.arm != null) row.arm_cm = values.arm;
   unwrap(await supabase.from('measurements').upsert(row));
+}
+
+// ---------- Fotografije napretka (privatan Storage bucket) ----------
+
+const PHOTO_BUCKET = 'progress-photos';
+const SIGNED_URL_SECONDS = 60 * 60; // link za prikaz važi sat vremena
+
+// Najnovije prvo. Svaka fotografija dobija privremeni potpisani link (bucket nije javan).
+export async function getProgressPhotos(forUserId) {
+  const userId = forUserId ?? await currentUserId();
+  const rows = unwrap(await supabase.from('progress_photos').select('id, date, path')
+    .eq('user_id', userId).order('date', { ascending: false }).order('created_at', { ascending: false }));
+  if (!rows.length) return [];
+  const signed = unwrap(await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(rows.map((r) => r.path), SIGNED_URL_SECONDS));
+  const urlFor = new Map(signed.map((s) => [s.path, s.signedUrl]));
+  return rows.map((r) => ({ id: r.id, date: r.date, path: r.path, url: urlFor.get(r.path) ?? null }));
+}
+
+// blob: već smanjen JPEG (lib/image.js). Prvo fajl, pa red; ako red ne uspe, fajl se briše.
+export async function addProgressPhoto(blob) {
+  const userId = await currentUserId();
+  const path = `${userId}/${crypto.randomUUID()}.jpg`;
+  unwrap(await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg' }));
+  const inserted = await supabase.from('progress_photos').insert({ user_id: userId, date: today(), path });
+  if (inserted.error) {
+    await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+    throw inserted.error;
+  }
+}
+
+// Prvo red (fotografija odmah nestaje iz aplikacije), pa fajl.
+export async function deleteProgressPhoto(photo) {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('progress_photos').delete().eq('id', photo.id).eq('user_id', userId).select('id'));
+  if (!rows.length) throw new Error('Fotografija nije obrisana.');
+  unwrap(await supabase.storage.from(PHOTO_BUCKET).remove([photo.path]));
 }
 
 // ---------- Trener: klijenti ----------

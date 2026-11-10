@@ -22,7 +22,7 @@ import Exercises from './screens/Exercises.jsx';
 import Chat from './screens/Chat.jsx';
 import Inbox, { ClientChat } from './screens/Inbox.jsx';
 import { useUnread } from './lib/useUnread.js';
-import { TRAINER_NAME } from './config.js';
+import { PRIVACY_VERSION, TRAINER_NAME } from './config.js';
 import ProgramEditor from './screens/ProgramEditor.jsx';
 import ProgramsAdmin from './screens/ProgramsAdmin.jsx';
 import WorkoutEditor from './screens/WorkoutEditor.jsx';
@@ -80,14 +80,16 @@ function AuthedApp() {
   const { data: profile, loading, error, reload } = useData(getProfile);
   const consent = useData(getPrivacyConsent);
   const toastMessage = useToast();
-  const unread = useUnread(profile?.role === 'trainer', Boolean(profile) && Boolean(consent.data));
+  const consented = Boolean(consent.data) && consent.data.version >= PRIVACY_VERSION;
+  const unread = useUnread(profile?.role === 'trainer', Boolean(profile) && consented);
 
   if (loading || consent.loading) return null;
 
   // Bez ovoga bi pad mreže izgledao kao "nema profila" i klijent bi dobio onboarding.
   if (error || consent.error) return <LoadError onRetry={() => { reload(); consent.reload(); }} />;
 
-  if (!consent.data) return <PrivacyConsent onDone={consent.reload} />;
+  // Nov korisnik, ili je politika u međuvremenu promenjena (stariji pristanak): traži se ponovo.
+  if (!consented) return <PrivacyConsent updated={Boolean(consent.data)} onDone={consent.reload} />;
 
   if (!profile || route.name === 'ciljevi') {
     return <Onboarding initial={profile} onDone={reload} />;

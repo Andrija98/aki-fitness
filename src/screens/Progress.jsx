@@ -1,4 +1,4 @@
-// Napredak: težina kroz vreme, upis nove težine i istorija treninga.
+// Napredak: težina kroz vreme, upis nove težine, mere, fotografije i istorija treninga.
 
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
@@ -8,6 +8,7 @@ import { formatDuration, formatNumber, formatShortDate } from '../lib/format.js'
 import WeightChart from '../components/WeightChart.jsx';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import ProgressPhotos from './ProgressPhotos.jsx';
 
 const PAGE_SIZE = 10;
 
@@ -100,6 +101,8 @@ export default function Progress({ userId, readOnly = false, header }) {
       </div>
 
       <Measurements rows={data.measurements} onSaved={reload} readOnly={readOnly} />
+
+      <ProgressPhotos userId={userId} readOnly={readOnly} />
 
       {weights.length > 0 && (
         <History title="Istorija težine" items={weights} renderItem={(w) => (

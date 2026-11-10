@@ -2,7 +2,7 @@
 // Ekran ovo ne može da proveri, jer api.js sam filtrira po user_id.
 
 import { test, expect } from '@playwright/test';
-import { ACCOUNT_A, ACCOUNT_B, ACCOUNT_TRAINER, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount, subscribeToMessages } from './helpers.js';
+import { ACCOUNT_A, ACCOUNT_B, ACCOUNT_TRAINER, LAGANO, GORNJI, SKLEKOVI, apiLogin, rest, resetAccount, subscribeToMessages, storage, listPhotos } from './helpers.js';
 
 const DENIED = 403;
 let a;
@@ -357,6 +357,34 @@ test.describe('plan ishrane', () => {
     expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
     expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: trainer.token, method: 'DELETE' })).rows).toEqual([]);
   });
+});
+
+test('fotografije napretka: fajl i red vidi samo vlasnik i trener, menja samo vlasnik', async () => {
+  const path = `${a.id}/e2e-rls.jpg`;
+  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]); // najkraći JPEG okvir; Storage proverava tip iz zaglavlja
+  expect((await storage(`object/progress-photos/${path}`, { token: a.token, method: 'POST', body: bytes })).status).toBe(200);
+  expect((await rest('progress_photos', { token: a.token, method: 'POST', body: { user_id: a.id, path } })).status).toBe(201);
+  const read = (token) => storage(`object/authenticated/progress-photos/${path}`, { token });
+
+  expect((await read(a.token)).status).toBe(200);
+  expect((await read(trainer.token)).status).toBe(200);
+  expect((await read(b.token)).status).not.toBe(200);
+  expect((await read(undefined)).status).not.toBe(200);
+  expect(await listPhotos(b.token, a.id)).toEqual([]);
+  expect((await rest(`progress_photos?user_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+  expect((await rest(`progress_photos?user_id=eq.${a.id}`, { token: trainer.token })).rows).toHaveLength(1);
+
+  // Upis u tuđ folder, red koji pokazuje na tuđ fajl i brisanje tuđeg: ne prolaze.
+  expect((await storage(`object/progress-photos/${a.id}/e2e-hak.jpg`, { token: b.token, method: 'POST', body: bytes })).status).not.toBe(200);
+  expect((await rest('progress_photos', { token: b.token, method: 'POST', body: { user_id: b.id, path } })).status).toBeGreaterThanOrEqual(400);
+  for (const token of [b.token, trainer.token]) {
+    await storage('object/progress-photos', { token, method: 'DELETE', body: { prefixes: [path] } });
+    expect((await rest(`progress_photos?user_id=eq.${a.id}`, { token, method: 'DELETE' })).rows).toEqual([]);
+  }
+  expect((await read(a.token)).status).toBe(200);
+  expect(await listPhotos(a.token, a.id)).toEqual([path]);
+  await resetAccount(ACCOUNT_A); // briše i fajl i red
+  expect(await listPhotos(a.token, a.id)).toEqual([]);
 });
 
 test('pristanak na privatnost menja samo vlasnik', async () => {

@@ -1,6 +1,7 @@
 // Zajedničko za testove: pozivi ka Supabase-u, čišćenje e2e naloga i česti koraci kroz UI.
 
 import { expect } from '@playwright/test';
+import { PRIVACY_VERSION } from '../src/config.js';
 
 export const ACCOUNT_A = { email: 'e2e-a@aki.test', passwordVar: 'E2E_A_PASSWORD' };
 export const ACCOUNT_B = { email: 'e2e-b@aki.test', passwordVar: 'E2E_B_PASSWORD' };
@@ -50,6 +51,30 @@ export async function rest(path, { token, method = 'GET', body } = {}) {
   return { status: res.status, rows: text ? JSON.parse(text) : null };
 }
 
+// Poziv ka Supabase Storage-u (fotografije). body: Buffer za upload ili objekat za JSON.
+export async function storage(path, { token, method = 'GET', body, contentType } = {}) {
+  const isFile = body instanceof Uint8Array;
+  const res = await fetch(`${baseUrl()}/storage/v1/${path}`, {
+    method,
+    headers: {
+      apikey: anonKey(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body ? { 'Content-Type': isFile ? (contentType ?? 'image/jpeg') : 'application/json' } : {}),
+    },
+    body: body ? (isFile ? body : JSON.stringify(body)) : undefined,
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+  return { status: res.status, json };
+}
+
+// Imena fajlova u folderu korisnika u bucketu fotografija.
+export async function listPhotos(token, userId) {
+  const { json } = await storage('object/list/progress-photos', { token, method: 'POST', body: { prefix: userId, limit: 1000 } });
+  return (json ?? []).map((o) => `${userId}/${o.name}`);
+}
+
 // Vraća nalog na stanje pre onboardinga. Radi kroz RLS, pa može da dira samo svoje redove.
 export async function resetAccount(account) {
   if (!account.email.startsWith('e2e-')) throw new Error('Čišćenje je dozvoljeno samo za e2e naloge.');
@@ -61,6 +86,7 @@ export async function resetAccount(account) {
     rest(`measurements?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`food_preferences?client_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`meal_checks?client_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest(`progress_photos?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`meal_plans?client_id=eq.${id}`, { token, method: 'DELETE' }), // stavke idu kaskadno; zaključan plan ostaje (vidi ispod)
     rest('rpc/e2e_clear_messages', { token, method: 'POST', body: {} }), // radi samo za e2e naloge (docs/supabase-messages.sql)
     rest(`profiles?id=eq.${id}`, {
@@ -69,10 +95,16 @@ export async function resetAccount(account) {
       // Pristanak ostaje upisan, da svaki test ne prolazi kroz taj ekran (testovi pristanka ga brišu sami).
       body: {
         name: '', goal: null, location: null, level: null, per_week: null, sex: null, birth_year: null, height_cm: null, activity: null,
-        privacy_accepted_at: new Date().toISOString(),
+        privacy_accepted_at: new Date().toISOString(), privacy_version: PRIVACY_VERSION,
       },
     }),
   ];
+  // Fajlovi fotografija nisu u bazi, pa se brišu posebno (redovi idu u writes ispod).
+  const files = await listPhotos(token, id);
+  if (files.length) {
+    const removed = await storage('object/progress-photos', { token, method: 'DELETE', body: { prefixes: files } });
+    if (removed.status >= 400) throw new Error(`Čišćenje fotografija nije uspelo: ${JSON.stringify(removed)}`);
+  }
   for (const result of await Promise.all(writes)) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
   }

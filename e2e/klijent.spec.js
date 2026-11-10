@@ -2,10 +2,10 @@
 
 import { test, expect } from '@playwright/test';
 import {
-  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, KARDIO, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding,
+  ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, KARDIO, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding, listPhotos,
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
-import { PRIVACY_CONTROLLER, PRIVACY_EMAIL } from '../src/config.js';
+import { PRIVACY_CONTROLLER, PRIVACY_EMAIL, PRIVACY_VERSION } from '../src/config.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
 
@@ -1171,10 +1171,89 @@ test.describe('privatnost', () => {
     expect(acceptedAt).toBeGreaterThan(before - 60_000);
     expect(acceptedAt).toBeLessThan(Date.now() + 60_000);
 
+    expect((await rest(`profiles?id=eq.${client.id}&select=privacy_version`, { token: client.token })).rows[0].privacy_version).toBe(PRIVACY_VERSION);
+
     // Posle onboardinga, link je i u Profilu.
     await finishOnboarding(page);
     await page.goto('/#/profil');
     await page.getByRole('button', { name: 'Politika privatnosti' }).click();
     await expect(page.getByRole('heading', { name: 'Politika privatnosti', level: 1 })).toBeVisible();
+  });
+});
+
+test('posle izmene politike pristanak se traži ponovo, uz napomenu šta je novo', async ({ page }) => {
+  const client = await resetAccount(ACCOUNT_A);
+  await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { privacy_version: PRIVACY_VERSION - 1 } });
+  await loginUi(page, ACCOUNT_A);
+  await expect(page.getByRole('heading', { name: 'Tvoji podaci' })).toBeVisible();
+  await expect(page.getByRole('note')).toContainText('Politika privatnosti je izmenjena');
+  await page.getByRole('checkbox', { name: /Saglasan sam/ }).check();
+  await page.getByRole('button', { name: 'Prihvatam i nastavljam' }).click();
+  await expect(page.getByLabel('Ime')).toBeVisible();
+  expect((await rest(`profiles?id=eq.${client.id}&select=privacy_version`, { token: client.token })).rows[0].privacy_version).toBe(PRIVACY_VERSION);
+  await resetAccount(ACCOUNT_A);
+});
+
+test.describe('fotografije napretka', () => {
+  // Najmanja ispravna PNG slika (1×1); aplikacija je smanji i pretvori u JPEG kao i pravu fotografiju.
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  const photoFile = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
+  test.afterAll(() => resetAccount(ACCOUNT_A));
+
+  test('klijent dodaje, poredi i briše fotografije, a trener ih vidi', async ({ page, browser }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    const rows = async () => (await rest(`progress_photos?user_id=eq.${client.id}&select=id,path`, { token: client.token })).rows;
+    await loginUi(page, ACCOUNT_A);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    const section = page.getByRole('region', { name: 'Fotografije napretka' });
+    await expect(section).toContainText('Vidiš ih samo ti i trener');
+
+    const thumbs = section.getByRole('button', { name: /^Fotografija od/ });
+    await section.getByLabel('Dodaj fotografiju').setInputFiles(photoFile('prva.png'));
+    await expect(page.getByText('Fotografija dodata')).toBeVisible();
+    await expect(thumbs).toHaveCount(1);
+    // Slika se stvarno učitava preko privremenog linka (bucket nije javan).
+    await expect.poll(() => thumbs.first().locator('img').evaluate((img) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+    await section.getByLabel('Dodaj fotografiju').setInputFiles(photoFile('druga.png'));
+    await expect(thumbs).toHaveCount(2);
+    const saved = await rows();
+    expect(saved).toHaveLength(2);
+    expect(saved.every((r) => r.path.startsWith(`${client.id}/`) && r.path.endsWith('.jpg'))).toBe(true);
+    expect((await listPhotos(client.token, client.id)).sort()).toEqual(saved.map((r) => r.path).sort());
+
+    // Pre i posle.
+    await section.getByRole('button', { name: 'Uporedi' }).click();
+    await expect(thumbs.first()).toHaveAttribute('aria-pressed', 'true');
+    await thumbs.nth(1).click();
+    const compare = page.getByRole('dialog', { name: 'Poređenje fotografija' });
+    await expect(compare.getByRole('img')).toHaveCount(2);
+    await compare.getByRole('button', { name: 'Zatvori' }).click();
+
+    // Brisanje uz potvrdu: nestaju i red i fajl.
+    await thumbs.first().click();
+    const viewer = page.getByRole('dialog', { name: /^Fotografija od/ });
+    await viewer.getByRole('button', { name: 'Obriši fotografiju' }).click();
+    await viewer.getByRole('button', { name: 'Da, obriši' }).click();
+    await expect(page.getByText('Fotografija obrisana')).toBeVisible();
+    await expect(thumbs).toHaveCount(1);
+    expect(await rows()).toHaveLength(1);
+    expect(await listPhotos(client.token, client.id)).toHaveLength(1);
+
+    // Trener vidi fotografiju u profilu klijenta, bez dodavanja i brisanja.
+    await resetAccount(ACCOUNT_TRAINER);
+    const trainerContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const trainer = await trainerContext.newPage();
+    await loginUi(trainer, ACCOUNT_TRAINER);
+    await finishOnboarding(trainer);
+    await trainer.goto(`/#/klijent/${client.id}`);
+    const trainerSection = trainer.getByRole('region', { name: 'Fotografije napretka' });
+    await expect(trainerSection.getByRole('button', { name: /^Fotografija od/ })).toHaveCount(1);
+    await expect(trainerSection.getByLabel('Dodaj fotografiju')).toHaveCount(0);
+    await trainerSection.getByRole('button', { name: /^Fotografija od/ }).click();
+    await expect(trainer.getByRole('dialog', { name: /^Fotografija od/ })).toBeVisible();
+    await expect(trainer.getByRole('button', { name: 'Obriši fotografiju' })).toHaveCount(0);
+    await trainerContext.close();
+    await resetAccount(ACCOUNT_TRAINER);
   });
 });
