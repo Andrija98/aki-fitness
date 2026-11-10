@@ -447,19 +447,45 @@ test.describe('poruke', () => {
     await received.getByRole('button', { name: 'Otvori fotografiju' }).click();
     const viewer = trainer.getByRole('dialog', { name: /^Fotografija/ });
     await expect(viewer.getByRole('img')).toBeVisible();
-    await viewer.getByRole('button', { name: 'Zatvori' }).click();
+    await expect(viewer.getByRole('button', { name: 'Zatvori' })).toBeFocused();
+    await trainer.keyboard.press('Escape');
+    await expect(viewer).toHaveCount(0);
+
+    // Redosled: poruka sa fotografijom kod primaoca čeka link, a tekst poslat posle nje ne sme da je preskoči.
+    await trainer.route('**/storage/v1/object/sign/**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.fallback();
+    });
+    await page.getByLabel('Poruka').fill('Večera');
+    await page.getByLabel('Priloži fotografiju').setInputFiles(photo);
+    await expect(page.locator('.bubble--out').last()).toContainText('Večera');
+    await page.getByLabel('Poruka').fill('I salata');
+    await page.getByRole('button', { name: 'Pošalji', exact: true }).click();
+    const incoming = trainer.locator('.bubble--in');
+    await expect(incoming).toHaveCount(4);
+    const order = await incoming.allTextContents();
+    expect(order[2]).toContain('Večera');
+    expect(order[3]).toContain('I salata');
+    await trainer.unroute('**/storage/v1/object/sign/**');
 
     // Trener odgovara samo fotografijom, bez teksta.
     await trainer.getByLabel('Priloži fotografiju').setInputFiles(photo);
     await expect.poll(() => loaded(page.locator('.bubble--in').last())).toBeGreaterThan(0);
     const rows = (await rest(`messages?client_id=eq.${client.id}&select=body,attachment_path&order=created_at`, { token: client.token })).rows;
-    expect(rows.map((r) => r.body)).toEqual(['Evo', 'Današnji ručak', '']);
-    expect(rows.slice(1).every((r) => r.attachment_path.startsWith(`${client.id}/`))).toBe(true);
+    expect(rows.map((r) => r.body)).toEqual(['Evo', 'Današnji ručak', 'Večera', 'I salata', '']);
+    expect(rows.filter((r) => r.attachment_path).every((r) => r.attachment_path.startsWith(`${client.id}/`))).toBe(true);
 
     // Poslednja poruka u sandučetu bez teksta piše "Fotografija".
     await trainer.goto('/#/poruke');
     await expect(trainer.getByRole('button', { name: /E2E Klijent/ })).toContainText('Fotografija');
     await trainerContext.close();
+
+    // Ako pravljenje linkova za slike ne uspe, tekst razgovora se i dalje vidi, a umesto slike piše "Fotografija".
+    await page.route('**/storage/v1/object/sign/**', (route) => route.fulfill({ status: 500, json: { message: 'test' } }));
+    await page.reload();
+    await expect(page.locator('.bubble--out').filter({ hasText: 'Evo' })).toBeVisible();
+    await expect(page.locator('.bubble-photo').first()).toContainText('Fotografija');
+    await page.unroute('**/storage/v1/object/sign/**');
   });
 
   test('klijent i trener se dopisuju uživo, sa nepročitanim na tabu', async ({ page, browser }) => {
@@ -1255,6 +1281,22 @@ test.describe('fotografije napretka', () => {
   const photoFile = (name) => ({ name, mimeType: 'image/png', buffer: PNG });
   test.afterAll(() => resetAccount(ACCOUNT_A));
 
+  test('fotografija se smanjuje i u browseru bez createImageBitmap (stariji telefoni)', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await page.addInitScript(() => { delete window.createImageBitmap; });
+    await loginUi(page, ACCOUNT_A);
+    await finishOnboarding(page);
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    const section = page.getByRole('region', { name: 'Fotografije napretka' });
+    await section.getByLabel('Dodaj fotografiju').setInputFiles(photoFile('stari-telefon.png'));
+    await expect(page.getByText('Fotografija dodata')).toBeVisible();
+    const thumb = section.getByRole('button', { name: /^Fotografija od/ });
+    await expect(thumb).toHaveCount(1);
+    await expect.poll(() => thumb.locator('img').evaluate((img) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+    expect(await listPhotos(client.token, client.id)).toHaveLength(1);
+    await resetAccount(ACCOUNT_A);
+  });
+
   test('klijent dodaje, poredi i briše fotografije, a trener ih vidi', async ({ page, browser }) => {
     const client = await resetAccount(ACCOUNT_A);
     const rows = async () => (await rest(`progress_photos?user_id=eq.${client.id}&select=id,path`, { token: client.token })).rows;
@@ -1285,9 +1327,15 @@ test.describe('fotografije napretka', () => {
     await expect(compare.getByRole('img')).toHaveCount(2);
     await compare.getByRole('button', { name: 'Zatvori' }).click();
 
-    // Brisanje uz potvrdu: nestaju i red i fajl.
+    // Pregled: fokus na "Zatvori", Escape zatvara.
     await thumbs.first().click();
     const viewer = page.getByRole('dialog', { name: /^Fotografija od/ });
+    await expect(viewer.getByRole('button', { name: 'Zatvori' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(viewer).toHaveCount(0);
+
+    // Brisanje uz potvrdu: nestaju i red i fajl.
+    await thumbs.first().click();
     await viewer.getByRole('button', { name: 'Obriši fotografiju' }).click();
     await viewer.getByRole('button', { name: 'Da, obriši' }).click();
     await expect(page.getByText('Fotografija obrisana')).toBeVisible();

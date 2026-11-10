@@ -7,8 +7,7 @@ import { toast } from '../lib/toast.js';
 import { addProgressPhoto, deleteProgressPhoto, getProgressPhotos } from '../data/api.js';
 import { compressImage } from '../lib/image.js';
 import { formatShortDate } from '../lib/format.js';
-import Icon from '../components/Icon.jsx';
-import PhotoViewer from '../components/PhotoViewer.jsx';
+import PhotoViewer, { CloseButton, useCloseOnEscape } from '../components/PhotoViewer.jsx';
 
 export default function ProgressPhotos({ userId, readOnly }) {
   const { data: photos, error, reload } = useData(() => getProgressPhotos(userId), [userId]);
@@ -120,11 +119,12 @@ function Viewer({ photo, readOnly, onClose, onDelete }) {
 }
 
 function Compare({ pair, onClose }) {
+  useCloseOnEscape(onClose);
   return (
     <div className="photo-viewer" role="dialog" aria-modal="true" aria-label="Poređenje fotografija">
       <div className="row between">
         <span style={{ fontWeight: 700 }}>Pre i posle</span>
-        <button type="button" className="round-btn" onClick={onClose} aria-label="Zatvori"><Icon name="x" /></button>
+        <CloseButton onClose={onClose} />
       </div>
       <div className="photo-compare">
         {pair.map((p) => (

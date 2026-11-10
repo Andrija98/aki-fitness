@@ -123,7 +123,7 @@ Supabase klijent sam ponavlja neuspešna čitanja (1 + 2 + 4 s), pa se greška v
 
 ### 5.1 Prijava i lozinka
 Email + lozinka (Supabase Auth, najmanje 8 znakova i u aplikaciji i na serveru). Nalog otvara trener (za sada ručno u
-Supabase-u). Zaboravljena lozinka šalje link; link otvara ekran `NewPassword`. Supabase-ov ugrađeni slanje mejlova ima
+Supabase-u). Zaboravljena lozinka šalje link; link otvara ekran `NewPassword`. Supabase-ov ugrađeni servis za slanje mejlova ima
 mali dnevni limit; pre pravih klijenata treba sopstveni domen i servis za mejlove (npr. Resend).
 Pri registraciji trigger `handle_new_user` pravi prazan red u `profiles`; "nema profila" znači da je `goal` prazan.
 
@@ -141,7 +141,8 @@ na kraju se čuva `sessions` + `session_sets`. Vežbe se ne brišu, jer su odra�
 ### 5.4 Napredak
 Težina (grafikon), mere (struk, kukovi, ruka), istorija treninga i **fotografije napretka** (`ProgressPhotos.jsx`):
 
-1. Telefon smanji sliku pre slanja (`lib/image.js`: canvas, najviše 1600 px, JPEG ~0,8; poštuje EXIF rotaciju).
+1. Telefon smanji sliku pre slanja (`lib/image.js`: canvas, najviše 1600 px, JPEG ~0,8; poštuje EXIF rotaciju;
+   na starijim browserima bez `createImageBitmap` slika se učitava preko `<img>`).
    Sa 4–8 MB na ~300 KB: štedi prostor (besplatno 1 GB) i mobilni internet.
 2. Prvo se šalje fajl, pa red u `progress_photos`; ako red ne uspe, fajl se briše. Red ne sme da pokazuje na tuđ fajl
    (`check (path like user_id || '/%')`).
@@ -155,8 +156,10 @@ drugi klijent ne dobija tuđe poruke ni preko WebSocket-a (ima test za to). Kao 
 kad se aplikacija vrati u fokus ili se vrati mreža. "Pročitano" označava samo primalac; broj nepročitanih je na tabu.
 
 **Fotografije u porukama:** dugme "Priloži fotografiju", slika se smanji kao kod napretka i ide sa tekstom iz polja kao
-natpisom. Realtime šalje samo red iz baze, pa aplikacija pri prijemu pravi potpisani link. Poslata fotografija se, kao i tekst,
-ne briše i ne menja.
+natpisom. Realtime šalje samo red iz baze, pa aplikacija pri prijemu pravi potpisani link. Zato poruka sa slikom stiže
+malo kasnije od teksta poslatog posle nje; lista poruka se zato uvek drži po vremenu slanja. Ako pravljenje linkova ne uspe,
+tekst se i dalje vidi, a umesto slike piše "Fotografija". Poslata fotografija se, kao i tekst, ne briše i ne menja.
+Slika u balonu ima stalan oblik (4:5), da se razgovor ne pomera kad se učita; cela slika se vidi kad se otvori.
 
 ### 5.6 Ishrana
 Četiri sloja, od najjednostavnijeg:
@@ -250,6 +253,8 @@ Pravila:
 - `resetAccount()` (u `e2e/helpers.js`) pre testa vraća nalog na početno stanje: briše njegove redove i fajlove, a odbija
   svaki nalog koji ne počinje sa `e2e-`. Briše kroz RLS, pa ni greškom ne može da dira tuđe podatke.
 - Test podaci imaju prefiks `E2E` i brišu se posle testa.
+- Realtime posle mirovanja ponovo pokreće vezu sa bazom, pa prva poruka može da kasni; testovi uživo zato čekaju do 20 s,
+  a poruke grešaka razlikuju "sporo" od "bezbednosni problem".
 - Gde god se piše tekst koji se ponavlja ("Ručak" je i u "Doručak"), lokatori koriste `exact: true` ili ulogu elementa.
 
 ---
@@ -277,7 +282,12 @@ traži nešto što ne postoji i korisnici dobijaju "Nema veze".
 
 ## 10. Poznata ograničenja
 
-- Supabase-ov ugrađeni slanje mejlova ima mali limit (reset lozinke); treba domen + Resend.
+- Supabase-ov ugrađeni servis za slanje mejlova ima mali limit (reset lozinke); treba domen + Resend.
+- Izuzeci za testove (`e2e_clear_messages`, brisanje priloga) prepoznaju e2e nalog po mejlu `e2e-…`. Korisnik koji bi
+  preko API-ja promenio svoj mejl u `e2e-…` mogao bi da obriše **sopstveni** razgovor i svoje priloge (tuđe ne).
+  Rizik je mali; potpuno rešenje je poseban Supabase projekat za testove.
+- Klijent može da otpremi fotografiju u svoj folder i bez poruke (najviše 2 MB po fajlu); kod veće grupe korisnika vredi
+  dodati ograničenje broja fajlova.
 - "Leaked password protection" je samo u Pro planu.
 - Font naslova nema č i đ (iscrtavaju se rezervnim fontom).
 - Brisanje naloga je na zahtev (trener/rukovalac, u roku od 30 dana); nema dugmeta "Obriši nalog".

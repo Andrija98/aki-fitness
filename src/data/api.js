@@ -520,7 +520,8 @@ async function signMessagePhotos(paths) {
 export async function getMessages(clientId) {
   const me = await currentUserId();
   const rows = unwrap(await supabase.from('messages').select('*').eq('client_id', clientId ?? me).order('created_at'));
-  const urls = await signMessagePhotos(rows.map((r) => r.attachment_path).filter(Boolean));
+  // Ako linkovi ne uspeju, tekst se i dalje prikazuje, a umesto slike piše "Fotografija".
+  const urls = await signMessagePhotos(rows.map((r) => r.attachment_path).filter(Boolean)).catch(() => new Map());
   return rows.map((r) => toMessage(r, me, urls.get(r.attachment_path) ?? null));
 }
 
@@ -535,7 +536,8 @@ export async function sendMessage(body, clientId, photo) {
     unwrap(await supabase.storage.from(MESSAGE_PHOTO_BUCKET).upload(path, photo, { contentType: 'image/jpeg' }));
   }
   const row = unwrap(await supabase.from('messages').insert({ client_id: conversation, body, attachment_path: path }).select().single());
-  const urls = await signMessagePhotos(path ? [path] : []);
+  // Poruka je već poslata: neuspeh linka ne sme da izgleda kao neuspeh slanja.
+  const urls = await signMessagePhotos(path ? [path] : []).catch(() => new Map());
   return toMessage(row, me, urls.get(path) ?? null);
 }
 

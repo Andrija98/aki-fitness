@@ -222,9 +222,12 @@ test.describe('poruke', () => {
     const control = await subscribeToMessages(trainer); // kontrola: trener mora da dobije poruku, inače test ništa ne dokazuje
     try {
       await rest('messages', { token: a.token, method: 'POST', body: { client_id: a.id, body: 'Tajna poruka' } });
-      await expect.poll(() => control.received.length, { timeout: 10_000 }).toBe(1);
+      // Realtime posle mirovanja ponovo pokreće vezu sa bazom, pa prva poruka može da kasni: zato 20 s.
+      await expect.poll(() => control.received.length, {
+        timeout: 20_000, message: 'Kontrola: trener nije dobio poruku preko Realtime-a (spora veza, ne bezbednosni problem)',
+      }).toBe(1);
       await new Promise((r) => setTimeout(r, 1500));
-      expect(spy.received).toEqual([]);
+      expect(spy.received, 'BEZBEDNOST: drugi klijent je dobio tuđu poruku preko Realtime-a').toEqual([]);
     } finally {
       await spy.close();
       await control.close();

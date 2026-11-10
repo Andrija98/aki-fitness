@@ -12,6 +12,13 @@ import LoadError from '../components/LoadError.jsx';
 import PhotoViewer from '../components/PhotoViewer.jsx';
 import { compressImage } from '../lib/image.js';
 
+// Dodaje poruku ako je već nema i drži listu po vremenu slanja (poruka sa fotografijom stiže
+// preko Realtime-a tek kad se napravi link, pa bi bez sortiranja mogla da preskoči kasniji tekst).
+function withMessage(list, m) {
+  if (!list || list.some((x) => x.id === m.id)) return list;
+  return [...list, m].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
 export default function Chat({ clientId, header, emptyText }) {
   const { data, error, reload } = useData(() => getMessages(clientId), [clientId]);
   const [messages, setMessages] = useState(null);
@@ -24,7 +31,7 @@ export default function Chat({ clientId, header, emptyText }) {
 
   // Nova poruka (i naša, kad stigne preko Realtime-a) dodaje se samo ako je već nemamo.
   useEffect(() => onNewMessage(clientId, (m) => {
-    setMessages((list) => (list && !list.some((x) => x.id === m.id) ? [...list, m] : list));
+    setMessages((list) => withMessage(list, m));
   }), [clientId]);
 
   useEffect(() => {
@@ -57,7 +64,7 @@ export default function Chat({ clientId, header, emptyText }) {
     setSending(true);
     try {
       const saved = await sendMessage(body, clientId, photo);
-      setMessages((list) => (list.some((x) => x.id === saved.id) ? list : [...list, saved]));
+      setMessages((list) => withMessage(list, saved));
       // Briše se samo poslato: ako je korisnik u međuvremenu kucao dalje, taj tekst ostaje.
       setText((current) => (current.trim() === body ? '' : current));
     } catch {
