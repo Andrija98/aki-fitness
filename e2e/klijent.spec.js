@@ -286,6 +286,28 @@ test.describe('trener: treninzi', () => {
     await expect(page.locator('.item-note')).toHaveText('Opcija 2: sklek');
   });
 
+  test('pauza 0 (superset): bez ekrana pauze, odmah sledeća vežba', async ({ page }) => {
+    await resetAccount(ACCOUNT_TRAINER);
+    const [workout] = (await rest('workouts', { token: trainer.token, method: 'POST', body: { title: 'E2E Superset' } })).rows;
+    const exercises = (await rest('exercises?name=in.(Plank,Sklekovi)&select=id,name', { token: trainer.token })).rows;
+    const idOf = (name) => exercises.find((e) => e.name === name).id;
+    // PostgREST pri upisu više redova traži iste ključeve u svakom redu.
+    const inserted = await rest('workout_items', { token: trainer.token, method: 'POST', body: [
+      { workout_id: workout.id, exercise_id: idOf('Plank'), position: 1, sets: 1, reps: null, reps_max: null, seconds: 30, rest_sec: 0, note: 'Superset sa sledećom vežbom.' },
+      { workout_id: workout.id, exercise_id: idOf('Sklekovi'), position: 2, sets: 2, reps: 10, reps_max: 12, seconds: null, rest_sec: 60, note: null },
+    ] });
+    expect(inserted.status).toBe(201);
+
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/trening/${LAGANO}/${workout.id}`);
+    await expect(page.getByText('1 serija × 30 s')).toBeVisible();
+    await expect(page.locator('.next-up')).toContainText('Bez pauze');
+    await page.getByRole('button', { name: 'Završi seriju' }).click();
+    await expect(page.getByRole('dialog', { name: 'Pauza' })).toHaveCount(0);
+    await expect(page.getByText('2 serije × 10–12 ponavljanja')).toBeVisible();
+  });
+
   test('trening iz programa prikazuje upozorenje', async ({ page }) => {
     await resetAccount(ACCOUNT_TRAINER);
     await loginUi(page, ACCOUNT_TRAINER);
@@ -295,6 +317,23 @@ test.describe('trener: treninzi', () => {
     await expect(page.getByRole('note')).toContainText('Ovaj trening koristi programa: 2.');
     await expect(page.getByLabel('Naziv treninga')).toHaveValue('Gornji deo tela');
   });
+});
+
+test('pretraga programa radi i kad program nema opis', async ({ page }) => {
+  await resetAccount(ACCOUNT_A);
+  // Opis nije obavezan (editor prazan opis čuva kao null): server ovde vraća programe bez opisa.
+  await page.route('**/rest/v1/programs*', async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    if (Array.isArray(json)) for (const program of json) program.description = null;
+    await route.fulfill({ response, json });
+  });
+  await loginUi(page, ACCOUNT_A);
+  await finishOnboarding(page);
+  await page.getByRole('link', { name: 'Treninzi' }).click();
+  await page.getByLabel('Pretraži programe').fill('snaga');
+  await expect(page.getByText('Snaga bez teretane')).toBeVisible();
+  await resetAccount(ACCOUNT_A);
 });
 
 test.describe('trener: programi', () => {

@@ -140,6 +140,7 @@ pauzu i **napomenu samo za taj trening** (`note`: "10 po nozi", "opcija 2: bench
 u savetu vežbe, jer je savet zajednički za sve programe. Ista vežba ne sme dvaput u istom treningu (sesija broji serije po vežbi),
 pa za superset sa vežbom koja se ponavlja postoji posebna vežba (npr. "Pregib za biceps sa gumom").
 Superset za sada nema poseban tok: vežbe idu jedna za drugom, a napomena objašnjava naizmenično izvođenje.
+Pauza 0 (prva vežba superseta) znači da se ekran pauze ne otvara, a kartica "Sledeće" piše "Bez pauze".
 Sesija treninga (`WorkoutSession.jsx`): vežba po vežba, cilj i napomena ispod naziva, upis ponavljanja i kilaže, pauza sa odbrojavanjem, rezime;
 na kraju se čuva `sessions` + `session_sets`. Vežbe se ne brišu, jer su odrađene serije vezane za njih.
 

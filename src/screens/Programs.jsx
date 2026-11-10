@@ -27,7 +27,7 @@ export default function Programs() {
   const q = query.trim().toLowerCase();
   const list = data.programs.filter((p) =>
     (filter === 'sve' || p.location === filter) &&
-    (!q || p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
+    (!q || p.title.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q)) // opis nije obavezan
   );
   const { active } = data;
 

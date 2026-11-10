@@ -194,7 +194,8 @@ export default function WorkoutSession({ programId, workoutId }) {
               <span className="small muted" style={{ fontWeight: 600 }}>Sledeće</span>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{next.name}</span>
             </div>
-            <span className="small muted" style={{ fontWeight: 600 }}>Pauza {item.rest}s</span>
+            {/* Pauza 0 (npr. prva vežba superseta): odmah sledeća vežba, bez ekrana pauze. */}
+            <span className="small muted" style={{ fontWeight: 600 }}>{item.rest ? `Pauza ${item.rest}s` : 'Bez pauze'}</span>
           </div>
         ) : (
           <div className="next-up">
