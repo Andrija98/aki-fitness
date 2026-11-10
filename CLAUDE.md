@@ -36,7 +36,7 @@ src/
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans (tim redom)
+docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans, -hardening (tim redom)
 public/               manifest, sw.js, ikonice
 e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
