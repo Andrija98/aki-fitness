@@ -731,8 +731,9 @@ test.describe('ishrana: izbor namirnica, plan i kvačice', () => {
     await expect(ring).toContainText('1.290');
     await expect(ring).toContainText('kcal preostalo');
 
+    // Dupli klik: drugi dodir se ignoriše dok prvi upis traje, pa ekran i baza ostaju usklađeni.
     const breakfast = page.getByRole('button', { name: 'Pojeo sam: Doručak' });
-    await breakfast.click();
+    await breakfast.dblclick();
     await expect(breakfast).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(async () => (await checks()).length, { timeout: 15000 }).toBe(1);
     const [check] = await checks();

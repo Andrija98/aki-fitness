@@ -338,6 +338,13 @@ test.describe('plan ishrane', () => {
     await rest(`meal_plans?id=eq.${planId}`, { token: trainer.token, method: 'PATCH', body: { locked: false } });
   });
 
+  test('pomoćne funkcije ne odaju tuđe planove', async () => {
+    // Neprijavljen ne može da ih pozove, a verzija koja prima tuđi id ne postoji.
+    expect((await rest('rpc/meal_plan_locked', { method: 'POST', body: {} })).status).toBeGreaterThanOrEqual(400);
+    expect((await rest('rpc/meal_plan_locked', { token: b.token, method: 'POST', body: { uid: a.id } })).status).toBe(404);
+    expect((await rest('rpc/meal_plan_locked', { token: b.token, method: 'POST', body: {} })).rows).toBe(false);
+  });
+
   test('kvačice: svako svoje, ne za budućnost, trener čita', async () => {
     const check = (account, date) => rest('meal_checks', { token: account.token, method: 'POST', body: {
       client_id: a.id, date, meal_type: 'rucak', kcal: 500, protein_g: 40, carbs_g: 50, fat_g: 15,

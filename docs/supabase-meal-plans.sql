@@ -39,13 +39,18 @@ create table public.meal_checks (
 );
 
 -- Pomoćne funkcije: security definer čita meal_plans bez RLS-a, pa polisa ne poziva samu sebe (rekurzija).
-create function public.meal_plan_locked(uid uuid) returns boolean
+-- Obe gledaju samo planove pozivaoca (auth.uid()), da preko /rpc niko ne može da pita za tuđ nalog.
+create function public.meal_plan_locked() returns boolean
   language sql stable security definer set search_path = public
-  as $$ select exists (select 1 from public.meal_plans where client_id = uid and locked) $$;
+  as $$ select exists (select 1 from public.meal_plans where client_id = auth.uid() and locked) $$;
 
 create function public.meal_plan_writable(pid uuid) returns boolean
   language sql stable security definer set search_path = public
   as $$ select exists (select 1 from public.meal_plans where id = pid and client_id = auth.uid() and not locked) $$;
+
+-- Postgres podrazumevano daje EXECUTE svima (public), pa i neprijavljenima (anon).
+revoke execute on function public.meal_plan_locked(), public.meal_plan_writable(uuid) from public, anon;
+grant execute on function public.meal_plan_locked(), public.meal_plan_writable(uuid) to authenticated;
 
 alter table public.meal_plans      enable row level security;
 alter table public.meal_plan_items enable row level security;
@@ -55,7 +60,7 @@ alter table public.meal_checks     enable row level security;
 create policy "plan: čitanje" on public.meal_plans for select to authenticated
   using (client_id = auth.uid() or public.is_trainer());
 create policy "plan: novi" on public.meal_plans for insert to authenticated
-  with check (client_id = auth.uid() and not locked and not public.meal_plan_locked(auth.uid()));
+  with check (client_id = auth.uid() and not locked and not public.meal_plan_locked());
 create policy "plan: brisanje" on public.meal_plans for delete to authenticated
   using (client_id = auth.uid() and not locked);
 create policy "plan: trener menja" on public.meal_plans for update to authenticated

@@ -106,6 +106,8 @@ function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initia
   const [day, setDay] = useState(todayIndex);
   const [checks, setChecks] = useState(initialChecks);
   const savedKey = useRef(null);
+  // Obroci čija kvačica se upravo upisuje. Ref, ne state: drugi brz dodir stiže pre ponovnog crtanja.
+  const pending = useRef(new Set());
 
   const hasFoods = foods.some((f) => f.verified && f.active);
   const key = inputsKey({ target, templates, foods, likedIds });
@@ -121,8 +123,10 @@ function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initia
   useEffect(() => {
     if (!generated || savedKey.current === key) return;
     savedKey.current = key;
+    const items = planToItems(generated.days);
+    if (!items.length) return; // nijedna namirnica ne odgovara obrocima: nema šta da se čuva
     const { kcal, protein, carbs, fat } = target;
-    replaceMealPlan({ target: { kcal, protein, carbs, fat }, inputsKey: key, items: planToItems(generated.days) })
+    replaceMealPlan({ target: { kcal, protein, carbs, fat }, inputsKey: key, items })
       .catch(() => toast('Plan nije sačuvan. Proveri internet.'));
   }, [generated, key, target]);
 
@@ -149,7 +153,11 @@ function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initia
   const plannedDay = days[day];
 
   // Kvačica se prikaže odmah; ako upis ne uspe, vraća se kako je bilo.
+  // Dok upis traje, novi dodir na isti obrok se ignoriše: "upiši" i "obriši" bi inače mogli da stignu obrnutim redom.
   async function toggle(meal) {
+    const pendingKey = `${date}|${meal.mealType}`;
+    if (pending.current.has(pendingKey)) return;
+    pending.current.add(pendingKey);
     const was = isChecked(meal.mealType);
     const old = dayChecks.find((c) => c.mealType === meal.mealType);
     const row = {
@@ -163,6 +171,8 @@ function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initia
     } catch {
       setChecks((cs) => (was ? [...without(cs), old] : without(cs)));
       toast('Nije sačuvano. Proveri internet.');
+    } finally {
+      pending.current.delete(pendingKey);
     }
   }
 

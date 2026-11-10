@@ -628,12 +628,14 @@ export async function saveFoodPreferences(foodIds) {
 // ---------- Ishrana: sačuvan plan i kvačice ----------
 
 // Važeći plan je najnoviji (posle zamene stari se briše, ali za kratko mogu da postoje oba).
+// Zaključan ima prednost: ako trener zaključa stari baš dok klijent pravi nov, važi trenerov
+// (klijent ga ne može obrisati, a novi plan bez trenerovih izmena ostaje skriven dok trener ne otključa).
 // Bez parametra: prijavljeni korisnik; trener prosleđuje id klijenta.
 export async function getMealPlan(forUserId) {
   const userId = forUserId ?? await currentUserId();
   const rows = unwrap(await supabase.from('meal_plans')
     .select('id, locked, target, inputs_key, meal_plan_items(id, weekday, meal_type, food_id, grams, suggested, position)')
-    .eq('client_id', userId).order('created_at', { ascending: false }).limit(1));
+    .eq('client_id', userId).order('locked', { ascending: false }).order('created_at', { ascending: false }).limit(1));
   const p = rows[0];
   if (!p) return null;
   return {
@@ -648,20 +650,22 @@ export async function getMealPlan(forUserId) {
 }
 
 // Prvo nov plan sa stavkama, pa brisanje starih: klijent nikad ne vidi prazan plan.
+// Brišu se samo STARIJI planovi: dve istovremene zamene (npr. telefon i računar) inače obrišu jedna drugu.
 // Ako je plan zaključan, RLS odbija upis i funkcija baca grešku.
 export async function replaceMealPlan({ target, inputsKey, items }) {
+  if (!items.length) throw new Error('Plan je prazan.');
   const userId = await currentUserId();
-  const { id } = unwrap(await supabase.from('meal_plans')
-    .insert({ client_id: userId, target, inputs_key: inputsKey }).select('id').single());
+  const plan = unwrap(await supabase.from('meal_plans')
+    .insert({ client_id: userId, target, inputs_key: inputsKey }).select('id, created_at').single());
   const inserted = await supabase.from('meal_plan_items').insert(items.map((i) => ({
-    plan_id: id, weekday: i.weekday, meal_type: i.mealType, food_id: i.foodId, grams: i.grams, suggested: i.suggested, position: i.position,
+    plan_id: plan.id, weekday: i.weekday, meal_type: i.mealType, food_id: i.foodId, grams: i.grams, suggested: i.suggested, position: i.position,
   })));
   if (inserted.error) {
-    await supabase.from('meal_plans').delete().eq('id', id);
+    await supabase.from('meal_plans').delete().eq('id', plan.id);
     throw inserted.error;
   }
-  unwrap(await supabase.from('meal_plans').delete().eq('client_id', userId).neq('id', id));
-  return id;
+  unwrap(await supabase.from('meal_plans').delete().eq('client_id', userId).lt('created_at', plan.created_at));
+  return plan.id;
 }
 
 // Trener: zaključava plan (klijentov generator ga više ne dira) i menja grame. Prvo zaključavanje,
