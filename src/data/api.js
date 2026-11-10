@@ -625,6 +625,67 @@ export async function saveFoodPreferences(foodIds) {
   if (toRemove.length) unwrap(await supabase.from('food_preferences').delete().eq('client_id', userId).in('food_id', toRemove));
 }
 
+// ---------- Ishrana: sačuvan plan i kvačice ----------
+
+// Važeći plan je najnoviji (posle zamene stari se briše, ali za kratko mogu da postoje oba).
+export async function getMealPlan() {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('meal_plans')
+    .select('id, locked, target, inputs_key, meal_plan_items(weekday, meal_type, food_id, grams, suggested, position)')
+    .eq('client_id', userId).order('created_at', { ascending: false }).limit(1));
+  const p = rows[0];
+  if (!p) return null;
+  return {
+    id: p.id,
+    locked: p.locked,
+    target: p.target,
+    inputsKey: p.inputs_key,
+    items: p.meal_plan_items.map((i) => ({
+      weekday: i.weekday, mealType: i.meal_type, foodId: i.food_id, grams: i.grams, suggested: i.suggested, position: i.position,
+    })),
+  };
+}
+
+// Prvo nov plan sa stavkama, pa brisanje starih: klijent nikad ne vidi prazan plan.
+// Ako je plan zaključan, RLS odbija upis i funkcija baca grešku.
+export async function replaceMealPlan({ target, inputsKey, items }) {
+  const userId = await currentUserId();
+  const { id } = unwrap(await supabase.from('meal_plans')
+    .insert({ client_id: userId, target, inputs_key: inputsKey }).select('id').single());
+  const inserted = await supabase.from('meal_plan_items').insert(items.map((i) => ({
+    plan_id: id, weekday: i.weekday, meal_type: i.mealType, food_id: i.foodId, grams: i.grams, suggested: i.suggested, position: i.position,
+  })));
+  if (inserted.error) {
+    await supabase.from('meal_plans').delete().eq('id', id);
+    throw inserted.error;
+  }
+  unwrap(await supabase.from('meal_plans').delete().eq('client_id', userId).neq('id', id));
+  return id;
+}
+
+// Kvačice u rasponu datuma (YYYY-MM-DD), uključujući oba kraja.
+export async function getMealChecks(from, to) {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('meal_checks').select('date, meal_type, kcal, protein_g, carbs_g, fat_g')
+    .eq('client_id', userId).gte('date', from).lte('date', to));
+  return rows.map((r) => ({ date: r.date, mealType: r.meal_type, kcal: r.kcal, protein: r.protein_g, carbs: r.carbs_g, fat: r.fat_g }));
+}
+
+// totals = { kcal, protein, carbs, fat } obroka (snimak), ili null da se kvačica skine.
+export async function setMealCheck(date, mealType, totals) {
+  const userId = await currentUserId();
+  if (!totals) {
+    unwrap(await supabase.from('meal_checks').delete().eq('client_id', userId).eq('date', date).eq('meal_type', mealType));
+    return;
+  }
+  const result = await supabase.from('meal_checks').insert({
+    client_id: userId, date, meal_type: mealType,
+    kcal: Math.round(totals.kcal), protein_g: Math.round(totals.protein), carbs_g: Math.round(totals.carbs), fat_g: Math.round(totals.fat),
+  });
+  if (result.error?.code === '23505') return; // već štiklirano (dupli dodir)
+  unwrap(result);
+}
+
 // ---------- Ostalo ----------
 
 function today() {

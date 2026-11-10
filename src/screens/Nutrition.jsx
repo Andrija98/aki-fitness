@@ -1,15 +1,18 @@
-// Ishrana (klijent): dnevni cilj i plan za danas.
+// Ishrana (klijent): dnevni cilj, nedeljni plan i kvačice "pojeo sam".
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { toast } from '../lib/toast.js';
-import { getFoodPreferences, getFoods, getMealTemplates, getNutrition, saveBodyData } from '../data/api.js';
-import { ACTIVITY, GOAL_LABEL, MIN_AGE, ageFromBirthYear, calculateTargets, goalSummary } from '../lib/nutrition.js';
-import { generatePlan, weekdayIndex } from '../lib/mealPlan.js';
+import {
+  getFoodPreferences, getFoods, getMealChecks, getMealPlan, getMealTemplates, getNutrition, replaceMealPlan, saveBodyData, setMealCheck,
+} from '../data/api.js';
+import { ACTIVITY, MIN_AGE, ageFromBirthYear, calculateTargets, goalSummary } from '../lib/nutrition.js';
+import { generatePlan, inputsKey, itemsToDays, planToItems, weekdayIndex } from '../lib/mealPlan.js';
 import { navigate } from '../lib/router.js';
-import { formatNumber } from '../lib/format.js';
+import { currentWeek, dateKey, DAY_LETTERS, formatNumber, GOAL_LABEL } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import LoadError from '../components/LoadError.jsx';
+import Icon from '../components/Icon.jsx';
 
 // Cilj koji važi: trenerov ako ga je postavio, inače preporuka po formuli.
 export function currentTarget(n) {
@@ -70,26 +73,62 @@ export default function Nutrition() {
       </div>
       <p className="small muted" style={{ margin: 0 }}>Okvirna preporuka, nije medicinski savet. Ako imaš zdravstvene tegobe, posavetuj se sa lekarom.</p>
       <button className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={() => setEditing(true)}>Izmeni podatke</button>
-      {target && <TodayPlan target={target} />}
+      {target && <WeekPlan target={target} />}
     </div>
   );
 }
 
+const DAY_NAMES = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
+const MACRO_BARS = [
+  ['Proteini', 'protein', 'var(--color-accent-2-600)'],
+  ['UH', 'carbs', 'var(--color-accent)'],
+  ['Masti', 'fat', 'var(--color-neutral-700)'],
+];
+
 async function loadPlanInputs() {
-  const [templates, foods, likedIds] = await Promise.all([getMealTemplates(), getFoods(), getFoodPreferences()]);
-  return { templates, foods, likedIds };
+  const week = currentWeek();
+  const [templates, foods, likedIds, plan, checks] = await Promise.all([
+    getMealTemplates(), getFoods(), getFoodPreferences(), getMealPlan(), getMealChecks(dateKey(week[0]), dateKey(week[6])),
+  ]);
+  return { templates, foods, likedIds, plan, checks };
 }
 
-// Plan za danas, izračunat iz izbora namirnica. U sledećem koraku plan se čuva i dobija kvačice.
-function TodayPlan({ target }) {
+function WeekPlan({ target }) {
   const { data, error } = useData(loadPlanInputs);
   if (error || !data) return null;
+  return <WeekPlanView target={target} {...data} />;
+}
 
-  const hasFoods = data.foods.some((f) => f.verified && f.active);
-  if (!hasFoods) {
-    return <div className="surface"><span className="small muted">{TRAINER_NAME} još priprema namirnice za plan ishrane.</span></div>;
-  }
-  if (!data.likedIds.length) {
+// Nedeljni plan je sačuvan u bazi. Dok nije zaključan, pravi se ponovo čim se promene ulazi (otisak inputsKey).
+function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initialChecks }) {
+  const week = currentWeek();
+  const todayIndex = weekdayIndex();
+  const [day, setDay] = useState(todayIndex);
+  const [checks, setChecks] = useState(initialChecks);
+  const savedKey = useRef(null);
+
+  const hasFoods = foods.some((f) => f.verified && f.active);
+  const key = inputsKey({ target, templates, foods, likedIds });
+  const upToDate = Boolean(plan && (plan.locked || plan.inputsKey === key));
+  const canGenerate = !plan?.locked && hasFoods && likedIds.length > 0;
+  // Ulazi se ne menjaju dok je ekran otvoren (dolaze iz jednog učitavanja), pa je otisak dovoljan kao zavisnost.
+  const generated = useMemo(
+    () => (!upToDate && canGenerate ? generatePlan({ target, templates, foods, likedIds }) : null),
+    [key, upToDate, canGenerate], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Nov plan se prikazuje odmah, a čuva u pozadini.
+  useEffect(() => {
+    if (!generated || savedKey.current === key) return;
+    savedKey.current = key;
+    const { kcal, protein, carbs, fat } = target;
+    replaceMealPlan({ target: { kcal, protein, carbs, fat }, inputsKey: key, items: planToItems(generated.days) })
+      .catch(() => toast('Plan nije sačuvan. Proveri internet.'));
+  }, [generated, key, target]);
+
+  const days = upToDate ? itemsToDays({ items: plan.items, foods, templates }) : generated?.days;
+  if (!days) {
+    if (!hasFoods) return <div className="surface"><span className="small muted">{TRAINER_NAME} još priprema namirnice za plan ishrane.</span></div>;
     return (
       <div className="surface col" style={{ gap: 10 }}>
         <span style={{ fontWeight: 700 }}>Plan obroka</span>
@@ -99,29 +138,97 @@ function TodayPlan({ target }) {
     );
   }
 
-  const { days } = generatePlan({ target, templates: data.templates, foods: data.foods, likedIds: data.likedIds });
-  const today = days[weekdayIndex()];
+  const date = dateKey(week[day]);
+  const isFuture = day > todayIndex;
+  const dayChecks = checks.filter((c) => c.date === date);
+  const isChecked = (mealType) => dayChecks.some((c) => c.mealType === mealType);
+  const eaten = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  for (const c of dayChecks) for (const m of Object.keys(eaten)) eaten[m] += c[m];
+  const left = target.kcal - eaten.kcal;
+  const pct = Math.min(100, Math.round((eaten.kcal / target.kcal) * 100));
+  const plannedDay = days[day];
+
+  // Kvačica se prikaže odmah; ako upis ne uspe, vraća se kako je bilo.
+  async function toggle(meal) {
+    const was = isChecked(meal.mealType);
+    const old = dayChecks.find((c) => c.mealType === meal.mealType);
+    const row = {
+      date, mealType: meal.mealType, kcal: Math.round(meal.totals.kcal), protein: Math.round(meal.totals.protein),
+      carbs: Math.round(meal.totals.carbs), fat: Math.round(meal.totals.fat),
+    };
+    const without = (cs) => cs.filter((c) => !(c.date === date && c.mealType === meal.mealType));
+    setChecks((cs) => (was ? without(cs) : [...cs, row]));
+    try {
+      await setMealCheck(date, meal.mealType, was ? null : meal.totals);
+    } catch {
+      setChecks((cs) => (was ? [...without(cs), old] : without(cs)));
+      toast('Nije sačuvano. Proveri internet.');
+    }
+  }
+
   return (
-    <section className="col" style={{ gap: 10 }} aria-label="Plan za danas">
-      <div className="section-head">
-        <span>Plan za danas</span>
-        <span className="small muted">{formatNumber(today.totals.kcal, 0)} kcal</span>
+    <section className="col" style={{ gap: 14 }} aria-label="Plan ishrane">
+      <div className="day-pick" role="group" aria-label="Dan u nedelji">
+        {week.map((d, i) => (
+          <button key={i} type="button" aria-pressed={i === day} aria-label={`${DAY_NAMES[i]} ${d.getDate()}.`}
+            className={[i === day && 'on', i === todayIndex && 'today'].filter(Boolean).join(' ')} onClick={() => setDay(i)}>
+            {DAY_LETTERS[i]}<br />{d.getDate()}
+          </button>
+        ))}
       </div>
-      {today.meals.map((m) => (
-        <div key={m.mealType} className="surface col" style={{ gap: 6 }}>
-          <span className="small" style={{ fontWeight: 700, color: 'var(--color-neutral-600)' }}>
-            {m.label.toUpperCase()}{m.timeHint ? ` · ${m.timeHint}` : ''} · {formatNumber(m.totals.kcal, 0)} kcal
+
+      <div className="surface row plan-summary">
+        <div className="kcal-ring" style={{ '--pct': `${pct}%` }}>
+          <span className="kcal-ring-inner">
+            <span className="kcal-ring-value">{formatNumber(Math.abs(left), 0)}</span>
+            <span className="kcal-ring-label">{left < 0 ? 'kcal preko' : 'kcal preostalo'}</span>
           </span>
-          {m.items.map((it) => (
-            <span key={it.foodId} className="row between" style={{ gap: 8 }}>
-              <span>{it.name}{it.suggested && <span className="small muted"> · predlog trenera</span>}</span>
-              <span style={{ fontWeight: 700 }}>{it.grams} g</span>
-            </span>
+        </div>
+        <div className="col" style={{ gap: 9, flex: 1, minWidth: 0 }}>
+          {MACRO_BARS.map(([label, macro, color]) => (
+            <div key={macro} className="col" style={{ gap: 4 }}>
+              <span className="row between small">
+                <span style={{ fontWeight: 600 }}>{label}</span>
+                <span>{Math.round(eaten[macro])} / {target[macro]} g</span>
+              </span>
+              <span className="macro-bar"><span style={{ width: `${Math.min(100, (eaten[macro] / target[macro]) * 100)}%`, background: color }} /></span>
+            </div>
           ))}
         </div>
-      ))}
+      </div>
+
+      <div className="section-head">
+        <span>{day === todayIndex ? 'Plan za danas' : `Plan: ${DAY_NAMES[day].toLowerCase()}`}</span>
+        <span className="small muted">{formatNumber(plannedDay.totals.kcal, 0)} kcal</span>
+      </div>
+      {plannedDay.meals.map((m) => {
+        const checked = isChecked(m.mealType);
+        return (
+          <div key={m.mealType} className="surface row meal-card">
+            <div className="col" style={{ gap: 6, flex: 1, minWidth: 0 }}>
+              <span className="small" style={{ fontWeight: 700, color: 'var(--color-neutral-600)' }}>
+                {m.label.toUpperCase()}{m.timeHint ? ` · ${m.timeHint}` : ''} · {formatNumber(m.totals.kcal, 0)} kcal
+              </span>
+              {m.items.map((it) => (
+                <span key={it.foodId} className="row between" style={{ gap: 8 }}>
+                  <span>{it.name}{it.suggested && <span className="small muted"> · predlog trenera</span>}</span>
+                  <span style={{ fontWeight: 700 }}>{it.grams} g</span>
+                </span>
+              ))}
+            </div>
+            {!isFuture && (
+              <button type="button" className={`meal-check${checked ? ' on' : ''}`} aria-pressed={checked}
+                aria-label={`Pojeo sam: ${m.label}`} onClick={() => toggle(m)}>
+                <span className="meal-check-dot" aria-hidden="true">{checked && <Icon name="check" />}</span>
+              </button>
+            )}
+          </div>
+        );
+      })}
       <span className="small muted">Gramaže su za namirnice u sirovom / suvom stanju.</span>
-      <button className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={() => navigate('ishrana', 'namirnice')}>Promeni namirnice</button>
+      {plan?.locked
+        ? <span className="small muted">Plan je pripremio {TRAINER_NAME}. Za izmene mu piši u porukama.</span>
+        : <button className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={() => navigate('ishrana', 'namirnice')}>Promeni namirnice</button>}
     </section>
   );
 }

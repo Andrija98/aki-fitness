@@ -1,7 +1,7 @@
 // Kalkulator dnevnog cilja: kalorije i makroi. Čista funkcija, bez React-a i baze, da može da se testira.
 // Okvirna preporuka, ne medicinski savet; trener može da je zameni svojim brojevima.
 
-import { formatNumber } from './format.js';
+import { formatNumber, GOAL_LABEL } from './format.js';
 
 export const ACTIVITY = [
   { id: 'sedeci', label: 'Sedeći', hint: 'Kancelarija, malo kretanja', factor: 1.2 },
@@ -40,7 +40,6 @@ export function macrosMatchKcal({ kcal, protein, carbs, fat }) {
   return diff <= Math.max(10, kcal * 0.15);
 }
 
-export const GOAL_LABEL = { mrsavljenje: 'Mršavljenje', snaga: 'Snaga i mišići', kondicija: 'Kondicija i energija' };
 const GOAL_FACTOR = { mrsavljenje: 0.8, snaga: 1.1, kondicija: 1 };
 const PROTEIN_PER_KG = { mrsavljenje: 2.0, snaga: 1.8, kondicija: 1.6 };
 const MIN_KCAL = { m: 1500, z: 1200 };

@@ -292,6 +292,66 @@ test('izbor namirnica: svako svoj, trener čita', async () => {
   await rest(`food_preferences?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
 });
 
+test.describe('plan ishrane', () => {
+  let food;
+  let planId;
+  const newPlan = (account, extra = {}) => rest('meal_plans', { token: account.token, method: 'POST', body: {
+    client_id: a.id, target: { kcal: 2000, protein: 150, carbs: 200, fat: 60 }, inputs_key: 'e2e', ...extra,
+  } });
+  const item = (plan) => ({ plan_id: plan, weekday: 0, meal_type: 'rucak', food_id: food.id, grams: 100 });
+
+  test.beforeAll(async () => {
+    food = (await rest('foods?select=id&limit=1', { token: trainer.token })).rows[0];
+    await rest(`meal_plans?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
+    if (!food) return;
+    planId = (await newPlan(a)).rows[0].id;
+    await rest('meal_plan_items', { token: a.token, method: 'POST', body: item(planId) });
+  });
+  // Ako test padne dok je plan zaključan, resetAccount u afterAll ovog fajla ga otključa i obriše.
+
+  test('vlasnik i trener vide plan, drugi klijent ne', async () => {
+    test.skip(!food, 'Nema nijedne namirnice u bazi');
+    expect((await rest(`meal_plans?id=eq.${planId}&select=id,meal_plan_items(grams)`, { token: a.token })).rows[0].meal_plan_items).toHaveLength(1);
+    expect((await rest(`meal_plan_items?plan_id=eq.${planId}`, { token: trainer.token })).rows).toHaveLength(1);
+    expect((await rest(`meal_plans?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+    expect((await rest(`meal_plan_items?plan_id=eq.${planId}`, { token: b.token })).rows).toEqual([]);
+  });
+
+  test('niko ne piše u tuđi plan, a klijent ne može sam da zaključa', async () => {
+    test.skip(!food, 'Nema nijedne namirnice u bazi');
+    expect((await newPlan(b)).status).toBe(DENIED);
+    expect((await rest('meal_plan_items', { token: b.token, method: 'POST', body: item(planId) })).status).toBe(DENIED);
+    expect((await newPlan(a, { locked: true })).status).toBe(DENIED);
+    expect((await rest(`meal_plans?id=eq.${planId}`, { token: a.token, method: 'PATCH', body: { locked: true } })).rows).toEqual([]);
+    expect((await rest(`meal_plan_items?plan_id=eq.${planId}`, { token: a.token, method: 'PATCH', body: { grams: 999 } })).rows).toEqual([]);
+    expect((await rest(`meal_plans?id=eq.${planId}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
+  });
+
+  test('zaključan plan klijent ne može da zameni ni obriše, a trener menja grame', async () => {
+    test.skip(!food, 'Nema nijedne namirnice u bazi');
+    expect((await rest(`meal_plans?id=eq.${planId}`, { token: trainer.token, method: 'PATCH', body: { locked: true } })).rows).toHaveLength(1);
+    expect((await newPlan(a)).status).toBe(DENIED);
+    expect((await rest('meal_plan_items', { token: a.token, method: 'POST', body: item(planId) })).status).toBe(DENIED);
+    expect((await rest(`meal_plans?id=eq.${planId}`, { token: a.token, method: 'DELETE' })).rows).toEqual([]);
+    const edited = await rest(`meal_plan_items?plan_id=eq.${planId}`, { token: trainer.token, method: 'PATCH', body: { grams: 150 } });
+    expect(edited.rows.map((r) => r.grams)).toEqual([150]);
+    await rest(`meal_plans?id=eq.${planId}`, { token: trainer.token, method: 'PATCH', body: { locked: false } });
+  });
+
+  test('kvačice: svako svoje, ne za budućnost, trener čita', async () => {
+    const check = (account, date) => rest('meal_checks', { token: account.token, method: 'POST', body: {
+      client_id: a.id, date, meal_type: 'rucak', kcal: 500, protein_g: 40, carbs_g: 50, fat_g: 15,
+    } });
+    expect((await check(a, '2000-01-03')).status).toBe(201);
+    expect((await check(a, '2999-01-01')).status).toBe(DENIED);
+    expect((await check(b, '2000-01-04')).status).toBe(DENIED);
+    expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: trainer.token })).rows).toHaveLength(1);
+    expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+    expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
+    expect((await rest(`meal_checks?client_id=eq.${a.id}`, { token: trainer.token, method: 'DELETE' })).rows).toEqual([]);
+  });
+});
+
 test('klijent ne može da menja raspored programa', async () => {
   const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
   expect(added.status).toBe(DENIED);

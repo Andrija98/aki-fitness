@@ -162,3 +162,58 @@ export function generatePlan({ target, templates, foods, likedIds, days = 7 }) {
 export function weekdayIndex(date = new Date()) {
   return (date.getDay() + 6) % 7;
 }
+
+// ---------- Sačuvan plan ----------
+
+const byPosition = (a, b) => a.position - b.position;
+
+// Otisak svega od čega gramaže zavise: cilj, struktura obroka, proverene namirnice i klijentov izbor.
+// Kad se otisak promeni, otključan plan se pravi ponovo. Naziv i vreme obroka se ne računaju jer ne menjaju gramaže.
+export function inputsKey({ target, templates, foods, likedIds }) {
+  const usable = foods
+    .filter((f) => f.verified && f.active)
+    .map((f) => [f.id, f.group, f.kcal, f.protein, f.carbs, f.fat, f.minG, f.maxG, [...f.mealTypes].sort()])
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const json = JSON.stringify([
+    MACROS.map((m) => target[m]),
+    templates.map((t) => [t.mealType, t.sharePct, t.groups]),
+    usable,
+    [...likedIds].sort(),
+  ]);
+  let hash = 5381; // djb2: kratak otisak umesto celog JSON-a u bazi
+  for (let i = 0; i < json.length; i++) hash = ((hash * 33) ^ json.charCodeAt(i)) >>> 0;
+  return `v1-${hash.toString(36)}-${json.length}`;
+}
+
+// Plan iz generatora u redove za bazu: jedan red po namirnici.
+export function planToItems(days) {
+  return days.flatMap((d) => d.meals.flatMap((m) => m.items.map((it, position) => ({
+    weekday: d.day, mealType: m.mealType, foodId: it.foodId, grams: it.grams, suggested: it.suggested, position,
+  }))));
+}
+
+// Sačuvani redovi u isti oblik koji vraća generator. Obroci idu redom iz strukture obroka;
+// namirnica koje više nema u bazi se preskače.
+export function itemsToDays({ items, foods, templates }) {
+  const byId = new Map(foods.map((f) => [f.id, f]));
+  return Array.from({ length: 7 }, (_, day) => {
+    const meals = templates.map((t) => {
+      const entries = items
+        .filter((i) => i.weekday === day && i.mealType === t.mealType)
+        .sort(byPosition)
+        .map((i) => ({ food: byId.get(i.foodId), grams: i.grams, suggested: i.suggested }))
+        .filter((e) => e.food);
+      if (!entries.length) return null;
+      return {
+        mealType: t.mealType,
+        label: t.label,
+        timeHint: t.timeHint,
+        items: entries.map((e) => ({ foodId: e.food.id, name: e.food.name, grams: e.grams, suggested: e.suggested })),
+        totals: total(entries),
+        entries,
+      };
+    }).filter(Boolean);
+    const dayTotals = total(meals.flatMap((m) => m.entries));
+    return { day, meals: meals.map(({ entries, ...m }) => m), totals: dayTotals };
+  });
+}

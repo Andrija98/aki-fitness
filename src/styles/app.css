@@ -286,3 +286,36 @@ select.text-input { appearance: none; }
   background: var(--color-text); color: var(--color-bg); padding: 12px 20px; border-radius: 999px; font-weight: 700; font-size: 14px;
   box-shadow: var(--shadow-lg); white-space: nowrap;
 }
+
+/* Ishrana: nedeljni plan (dizajn 05) */
+.day-pick { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.day-pick button {
+  min-height: 48px; padding: 6px 0; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--color-neutral-600);
+}
+.day-pick button.today { color: var(--color-accent-700); }
+.day-pick button.on { background: var(--color-accent); color: var(--color-neutral-100); }
+.plan-summary { gap: 18px; padding: 18px; border-radius: 30px; align-items: center; }
+.kcal-ring {
+  width: 104px; height: 104px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--color-accent) 0 var(--pct), var(--color-neutral-300) var(--pct) 100%);
+}
+.kcal-ring-inner {
+  width: 78px; height: 78px; border-radius: 50%; background: var(--color-surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.kcal-ring-value { font-family: var(--font-heading); font-size: 20px; line-height: 1; }
+.kcal-ring-label { font-size: 11px; color: var(--color-neutral-700); text-align: center; }
+.macro-bar { display: block; height: 6px; border-radius: 3px; background: var(--color-neutral-300); overflow: hidden; }
+.macro-bar > span { display: block; height: 100%; border-radius: 3px; }
+.meal-card { align-items: flex-start; gap: 8px; }
+.meal-check {
+  width: 44px; height: 44px; flex: none; margin: -8px -8px 0 0; border: 0; background: transparent; cursor: pointer;
+  display: grid; place-items: center;
+}
+.meal-check-dot {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--color-neutral-400);
+  display: grid; place-items: center; color: var(--color-neutral-100);
+}
+.meal-check-dot svg { width: 16px; height: 16px; }
+.meal-check.on .meal-check-dot { background: var(--color-accent-2-500); border-color: var(--color-accent-2-500); }

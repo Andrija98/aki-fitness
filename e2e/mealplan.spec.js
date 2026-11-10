@@ -1,7 +1,7 @@
 // Generator plana ishrane, bez browsera i baze. Namirnice su sa vrednostima iz USDA seed-a.
 
 import { test, expect } from '@playwright/test';
-import { generatePlan, weekdayIndex } from '../src/lib/mealPlan.js';
+import { generatePlan, inputsKey, itemsToDays, planToItems, weekdayIndex } from '../src/lib/mealPlan.js';
 
 const ALL = ['dorucak', 'uzina1', 'rucak', 'uzina2', 'vecera'];
 const food = (id, group, kcal, protein, carbs, fat, minG, maxG, mealTypes = ALL, extra = {}) =>
@@ -127,4 +127,41 @@ test('isti ulaz uvek daje isti plan, a veći cilj veće porcije', () => {
 test('dan u nedelji kreće od ponedeljka', () => {
   expect(weekdayIndex(new Date('2026-11-09T12:00:00'))).toBe(0); // ponedeljak
   expect(weekdayIndex(new Date('2026-11-15T12:00:00'))).toBe(6); // nedelja
+});
+
+// ---------- Sačuvan plan ----------
+
+const INPUTS = { target: TARGETS[0].target, templates: TEMPLATES, foods: FOODS, likedIds: ALL_IDS };
+
+test('otisak ulaza: isti ulazi isti otisak, promena bilo čega što menja gramaže daje drugi', () => {
+  const key = inputsKey(INPUTS);
+  // Redosled izbora i naziv obroka ne menjaju gramaže.
+  expect(inputsKey({ ...INPUTS, likedIds: [...ALL_IDS].reverse() })).toBe(key);
+  expect(inputsKey({ ...INPUTS, templates: TEMPLATES.map((t) => ({ ...t, label: `${t.label}!`, timeHint: '00:00' })) })).toBe(key);
+
+  expect(inputsKey({ ...INPUTS, target: { ...INPUTS.target, kcal: 1300 } })).not.toBe(key);
+  expect(inputsKey({ ...INPUTS, likedIds: ALL_IDS.slice(1) })).not.toBe(key);
+  expect(inputsKey({ ...INPUTS, templates: TEMPLATES.map((t, i) => (i ? t : { ...t, sharePct: 30 })) })).not.toBe(key);
+  expect(inputsKey({ ...INPUTS, foods: FOODS.map((f, i) => (i ? f : { ...f, maxG: 300 })) })).not.toBe(key);
+  // Trener proveri novu namirnicu: menja ponudu, pa i plan.
+  expect(inputsKey({ ...INPUTS, foods: [...FOODS, food('tuna', 'protein', 116, 25.5, 0, 0.8, 80, 200)] })).not.toBe(key);
+  // Neproverena namirnica ne utiče.
+  expect(inputsKey({ ...INPUTS, foods: [...FOODS, food('tuna', 'protein', 116, 25.5, 0, 0.8, 80, 200, ALL, { verified: false })] })).toBe(key);
+});
+
+test('plan sačuvan u redove i pročitan nazad je isti kao iz generatora', () => {
+  const { days } = generatePlan(INPUTS);
+  const items = planToItems(days);
+  expect(items.every((i) => i.grams > 0 && i.weekday >= 0 && i.weekday <= 6)).toBe(true);
+  // Baza ne garantuje redosled redova.
+  const shuffled = [...items].reverse();
+  expect(itemsToDays({ items: shuffled, foods: FOODS, templates: TEMPLATES })).toEqual(days);
+});
+
+test('sačuvan plan preskače namirnicu koje više nema, a ostatak obroka ostaje', () => {
+  const { days } = generatePlan(INPUTS);
+  const read = itemsToDays({ items: planToItems(days), foods: FOODS.filter((f) => f.id !== 'brokoli'), templates: TEMPLATES });
+  const lunch = read[0].meals.find((m) => m.mealType === 'rucak');
+  expect(lunch.items.map((i) => i.foodId)).not.toContain('brokoli');
+  expect(lunch.items.length).toBeGreaterThan(0);
 });

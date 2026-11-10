@@ -635,7 +635,7 @@ test.describe('trener: namirnice i struktura obroka', () => {
   });
 });
 
-test.describe('ishrana: izbor namirnica i plan za danas', () => {
+test.describe('ishrana: izbor namirnica, plan i kvačice', () => {
   let trainer;
   // Proverene E2E namirnice za sve grupe i obroke, da plan ne zavisi od toga šta je Aki već proverio.
   // Dok test traje, prave korisnike mogu da ih vide na listi; brišu se odmah posle.
@@ -682,7 +682,7 @@ test.describe('ishrana: izbor namirnica i plan za danas', () => {
     await expect(page.getByRole('note')).toHaveCount(0);
     await page.getByRole('button', { name: /Sačuvaj izbor/ }).click();
 
-    const plan = page.getByRole('region', { name: 'Plan za danas' });
+    const plan = page.getByRole('region', { name: 'Plan ishrane' });
     await expect(plan).toBeVisible();
     await expect(plan).toContainText('RUČAK');
     await expect(plan).toContainText(/E2E Piletina\d* *\d+ g/);
@@ -697,6 +697,69 @@ test.describe('ishrana: izbor namirnica i plan za danas', () => {
     await page.getByRole('button', { name: /Sačuvaj izbor/ }).click();
     await expect(plan).toBeVisible();
     expect((await rest(`food_preferences?client_id=eq.${client.id}&select=food_id`, { token: client.token })).rows).toHaveLength(TEST_FOODS.length - 1);
+  });
+
+  test('plan se čuva, kvačica smanjuje preostale kalorije, a promena izbora pravi nov plan', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
+      name: 'E2E Klijent', goal: 'mrsavljenje', location: 'kuca', level: 'pocetnik', per_week: 3,
+      sex: 'z', birth_year: new Date().getFullYear() - 25, height_cm: 165, activity: 'sedeci',
+    } });
+    await rest('weights', { token: client.token, method: 'POST', body: { user_id: client.id, date: '2000-01-01', kg: 60 } });
+    const foods = (await rest('foods?name=like.E2E*&select=id,name', { token: client.token })).rows;
+    await rest('food_preferences', { token: client.token, method: 'POST', body: foods.map((f) => ({ client_id: client.id, food_id: f.id })) });
+    const plans = async () => (await rest(`meal_plans?client_id=eq.${client.id}&select=id,locked,meal_plan_items(id)`, { token: client.token })).rows;
+    const checks = async () => (await rest(`meal_checks?client_id=eq.${client.id}&select=date,meal_type,kcal`, { token: client.token })).rows;
+    const today = new Date().toLocaleDateString('sv-SE');
+
+    await loginUi(page, ACCOUNT_A);
+    await page.getByRole('link', { name: 'Ishrana' }).click();
+    const plan = page.getByRole('region', { name: 'Plan ishrane' });
+    await expect(plan).toContainText('Plan za danas');
+    await expect.poll(async () => (await plans()).length, { timeout: 15000 }).toBe(1);
+    const [first] = await plans();
+    expect(first.locked).toBe(false);
+    expect(first.meal_plan_items.length).toBeGreaterThan(20); // 7 dana × 5 obroka × 2–4 namirnice
+
+    const ring = page.locator('.kcal-ring');
+    await expect(ring).toContainText('1.290');
+    await expect(ring).toContainText('kcal preostalo');
+
+    const breakfast = page.getByRole('button', { name: 'Pojeo sam: Doručak' });
+    await breakfast.click();
+    await expect(breakfast).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(async () => (await checks()).length, { timeout: 15000 }).toBe(1);
+    const [check] = await checks();
+    expect(check).toMatchObject({ date: today, meal_type: 'dorucak' });
+    await expect(ring).toContainText((1290 - check.kcal).toLocaleString('sr-RS'));
+
+    // Kvačica ostaje posle ponovnog učitavanja, a plan se ne pravi ponovo dok se ulazi ne promene.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Pojeo sam: Doručak' })).toHaveAttribute('aria-pressed', 'true');
+    expect((await plans()).map((p) => p.id)).toEqual([first.id]);
+
+    // Budući dani se vide, ali bez kvačica.
+    const todayIndex = (new Date().getDay() + 6) % 7;
+    if (todayIndex < 6) {
+      await page.getByRole('group', { name: 'Dan u nedelji' }).getByRole('button', { name: /^Nedelja/ }).click();
+      await expect(plan).toContainText('Plan: nedelja');
+      await expect(plan).toContainText('RUČAK');
+      await expect(page.getByRole('button', { name: /^Pojeo sam/ })).toHaveCount(0);
+    }
+
+    // Promena izbora (bez banane) → nov plan, stari obrisan.
+    const banana = foods.find((f) => f.name === 'E2E Banana');
+    await rest(`food_preferences?client_id=eq.${client.id}&food_id=eq.${banana.id}`, { token: client.token, method: 'DELETE' });
+    await page.reload();
+    await expect(plan).toBeVisible();
+    await expect.poll(async () => (await plans()).map((p) => p.id), { timeout: 15000 }).not.toEqual([first.id]);
+    expect(await plans()).toHaveLength(1);
+
+    // Skidanje kvačice briše red.
+    await page.getByRole('button', { name: 'Pojeo sam: Doručak' }).click();
+    await expect(page.getByRole('button', { name: 'Pojeo sam: Doručak' })).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(async () => (await checks()).length, { timeout: 15000 }).toBe(0);
+    await expect(ring).toContainText('1.290');
   });
 });
 

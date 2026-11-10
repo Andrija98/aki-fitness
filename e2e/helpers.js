@@ -60,6 +60,8 @@ export async function resetAccount(account) {
     rest(`enrollments?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`measurements?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`food_preferences?client_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest(`meal_checks?client_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest(`meal_plans?client_id=eq.${id}`, { token, method: 'DELETE' }), // stavke idu kaskadno; zaključan plan ostaje (vidi ispod)
     rest('rpc/e2e_clear_messages', { token, method: 'POST', body: {} }), // radi samo za e2e naloge (docs/supabase-messages.sql)
     rest(`profiles?id=eq.${id}`, {
       token,
@@ -69,6 +71,14 @@ export async function resetAccount(account) {
   ];
   for (const result of await Promise.all(writes)) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
+  }
+  // Zaključan plan klijent ne sme da obriše: trener ga otključa, pa ga klijent obriše.
+  const left = await rest(`meal_plans?client_id=eq.${id}&select=id`, { token });
+  if (left.rows?.length) {
+    const trainer = await apiLogin(ACCOUNT_TRAINER);
+    await rest(`meal_plans?client_id=eq.${id}`, { token: trainer.token, method: 'PATCH', body: { locked: false } });
+    const removed = await rest(`meal_plans?client_id=eq.${id}`, { token, method: 'DELETE' });
+    if (removed.status >= 400 || removed.rows.length !== left.rows.length) throw new Error('Čišćenje plana ishrane nije uspelo.');
   }
   return { token, id };
 }
