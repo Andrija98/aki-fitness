@@ -29,6 +29,7 @@ import WorkoutsAdmin from './screens/WorkoutsAdmin.jsx';
 import Profile from './screens/Profile.jsx';
 import Progress from './screens/Progress.jsx';
 import Nutrition from './screens/Nutrition.jsx';
+import FoodPreferences from './screens/FoodPreferences.jsx';
 import Foods from './screens/Foods.jsx';
 import FoodEditor from './screens/FoodEditor.jsx';
 import MealTemplates from './screens/MealTemplates.jsx';
@@ -93,7 +94,7 @@ function AuthedApp() {
     case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
     case 'profil': screen = <Profile profile={profile} />; break;
     case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
-    case 'ishrana': screen = <Nutrition />; break;
+    case 'ishrana': screen = p1 === 'namirnice' ? <FoodPreferences /> : <Nutrition />; break;
     case 'napredak': screen = <Progress />; break;
     case 'vezbe': screen = isTrainer ? <Exercises /> : <Home profile={profile} />; break;
     case 'trener-treninzi': screen = isTrainer ? <WorkoutsAdmin /> : <Home profile={profile} />; break;

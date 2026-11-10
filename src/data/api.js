@@ -607,6 +607,24 @@ export async function saveMealTemplates(templates) {
   if (rows.length !== templates.length) throw new Error('Struktura obroka nije sačuvana.');
 }
 
+// ---------- Ishrana: namirnice koje klijent voli ----------
+
+export async function getFoodPreferences() {
+  const userId = await currentUserId();
+  return unwrap(await supabase.from('food_preferences').select('food_id').eq('client_id', userId)).map((r) => r.food_id);
+}
+
+// Upisuje samo razliku: nove dodaje, odčekirane briše.
+export async function saveFoodPreferences(foodIds) {
+  const userId = await currentUserId();
+  const current = new Set(await getFoodPreferences());
+  const wanted = new Set(foodIds);
+  const toAdd = [...wanted].filter((id) => !current.has(id));
+  const toRemove = [...current].filter((id) => !wanted.has(id));
+  if (toAdd.length) unwrap(await supabase.from('food_preferences').insert(toAdd.map((food_id) => ({ client_id: userId, food_id }))));
+  if (toRemove.length) unwrap(await supabase.from('food_preferences').delete().eq('client_id', userId).in('food_id', toRemove));
+}
+
 // ---------- Ostalo ----------
 
 function today() {

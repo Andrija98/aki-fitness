@@ -28,20 +28,22 @@ src/
   lib/router.js       mali hash router: useRoute(), navigate('program', id), href(), back()
   lib/useData.js      hook za async učitavanje: const { data, reload } = useData(() => api(), [deps])
   lib/format.js       datumi, brojevi, nedelja, streak, YouTube ID
+  lib/nutrition.js    kalkulator dnevnog cilja, grupe namirnica, obroci (čiste funkcije, testovi u e2e/nutrition.spec.js)
+  lib/mealPlan.js     generator plana ishrane (čista funkcija, testovi u e2e/mealplan.spec.js)
   lib/toast.js        toast('Poruka') sa bilo kog mesta
   components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer)
   screens/            jedan fajl po ekranu
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed (tim redom)
+docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences (tim redom)
 public/               manifest, sw.js, ikonice
 e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
 
 ## Rute
 `#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id`, `#/trener-treninzi`, `#/trener-trening/:id|novi`, `#/trener-programi`, `#/trener-program/:id|novi`, `#/namirnice`, `#/namirnica/:id|nova`, `#/obroci` (poslednjih deset samo trener), `#/ciljevi`,
-`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (kalkulator; plan obroka sledi).
+`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (cilj i plan za danas), `#/ishrana/namirnice` (izbor namirnica).
 
 ## Pravila
 - **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.

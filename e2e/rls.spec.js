@@ -276,6 +276,22 @@ test('namirnice i strukturu obroka klijent čita, ali ne menja', async () => {
   expect(changed.rows).toEqual([]);
 });
 
+test('izbor namirnica: svako svoj, trener čita', async () => {
+  const anyFood = (await rest('foods?select=id&limit=1', { token: trainer.token })).rows[0];
+  test.skip(!anyFood, 'Nema nijedne namirnice u bazi');
+  await rest(`food_preferences?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
+  const own = await rest('food_preferences', { token: a.token, method: 'POST', body: { client_id: a.id, food_id: anyFood.id } });
+  expect(own.status).toBe(201);
+
+  expect((await rest(`food_preferences?client_id=eq.${a.id}`, { token: trainer.token })).rows).toHaveLength(1);
+  expect((await rest(`food_preferences?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+  const intoOther = await rest('food_preferences', { token: b.token, method: 'POST', body: { client_id: a.id, food_id: anyFood.id } });
+  expect(intoOther.status).toBe(DENIED);
+  const removeOther = await rest(`food_preferences?client_id=eq.${a.id}`, { token: b.token, method: 'DELETE' });
+  expect(removeOther.rows).toEqual([]);
+  await rest(`food_preferences?client_id=eq.${a.id}`, { token: a.token, method: 'DELETE' });
+});
+
 test('klijent ne može da menja raspored programa', async () => {
   const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
   expect(added.status).toBe(DENIED);

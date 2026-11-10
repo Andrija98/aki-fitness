@@ -180,6 +180,7 @@ create policy "težina: trener" on public.weights for select using (public.is_tr
 -- Poruke: tabela, pravila, Realtime i funkcija za testove su u docs/supabase-messages.sql (pokreni posle ovog fajla).
 -- Kalkulator kalorija (kolone u profiles, tabela nutrition_targets): docs/supabase-nutrition-targets.sql.
 -- Namirnice i struktura obroka: docs/supabase-foods.sql, početne namirnice: docs/supabase-foods-seed.sql.
+-- Namirnice koje klijent voli: docs/supabase-food-preferences.sql.
 
 create policy "mere: svoje"  on public.measurements for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "mere: trener" on public.measurements for select using (public.is_trainer());

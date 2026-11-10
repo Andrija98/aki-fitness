@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { toast } from '../lib/toast.js';
-import { getNutrition, saveBodyData } from '../data/api.js';
+import { getFoodPreferences, getFoods, getMealTemplates, getNutrition, saveBodyData } from '../data/api.js';
 import { ACTIVITY, MIN_AGE, ageFromBirthYear, calculateTargets } from '../lib/nutrition.js';
+import { generatePlan, weekdayIndex } from '../lib/mealPlan.js';
+import { navigate } from '../lib/router.js';
 import { formatNumber } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import LoadError from '../components/LoadError.jsx';
@@ -63,11 +65,59 @@ export default function Nutrition() {
       </div>
       <p className="small muted" style={{ margin: 0 }}>Okvirna preporuka, nije medicinski savet. Ako imaš zdravstvene tegobe, posavetuj se sa lekarom.</p>
       <button className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={() => setEditing(true)}>Izmeni podatke</button>
-      <div className="surface col" style={{ gap: 6 }}>
-        <span style={{ fontWeight: 700 }}>Plan obroka</span>
-        <span className="small muted">Uskoro: plan doručka, ručka i večere prema tvom cilju.</span>
-      </div>
+      {target && <TodayPlan target={target} />}
     </div>
+  );
+}
+
+async function loadPlanInputs() {
+  const [templates, foods, likedIds] = await Promise.all([getMealTemplates(), getFoods(), getFoodPreferences()]);
+  return { templates, foods, likedIds };
+}
+
+// Plan za danas, izračunat iz izbora namirnica. U sledećem koraku plan se čuva i dobija kvačice.
+function TodayPlan({ target }) {
+  const { data, error } = useData(loadPlanInputs);
+  if (error || !data) return null;
+
+  const hasFoods = data.foods.some((f) => f.verified && f.active);
+  if (!hasFoods) {
+    return <div className="surface"><span className="small muted">{TRAINER_NAME} još priprema namirnice za plan ishrane.</span></div>;
+  }
+  if (!data.likedIds.length) {
+    return (
+      <div className="surface col" style={{ gap: 10 }}>
+        <span style={{ fontWeight: 700 }}>Plan obroka</span>
+        <span className="small muted">Izaberi namirnice koje voliš, pa ti pravimo plan doručka, užina, ručka i večere prema tvom cilju.</span>
+        <button className="pill-btn pill-btn--accent" onClick={() => navigate('ishrana', 'namirnice')}>Izaberi namirnice koje voliš</button>
+      </div>
+    );
+  }
+
+  const { days } = generatePlan({ target, templates: data.templates, foods: data.foods, likedIds: data.likedIds });
+  const today = days[weekdayIndex()];
+  return (
+    <section className="col" style={{ gap: 10 }} aria-label="Plan za danas">
+      <div className="section-head">
+        <span>Plan za danas</span>
+        <span className="small muted">{formatNumber(today.totals.kcal, 0)} kcal</span>
+      </div>
+      {today.meals.map((m) => (
+        <div key={m.mealType} className="surface col" style={{ gap: 6 }}>
+          <span className="small" style={{ fontWeight: 700, color: 'var(--color-neutral-600)' }}>
+            {m.label.toUpperCase()}{m.timeHint ? ` · ${m.timeHint}` : ''} · {formatNumber(m.totals.kcal, 0)} kcal
+          </span>
+          {m.items.map((it) => (
+            <span key={it.foodId} className="row between" style={{ gap: 8 }}>
+              <span>{it.name}{it.suggested && <span className="small muted"> · predlog trenera</span>}</span>
+              <span style={{ fontWeight: 700 }}>{it.grams} g</span>
+            </span>
+          ))}
+        </div>
+      ))}
+      <span className="small muted">Gramaže su za namirnice u sirovom / suvom stanju.</span>
+      <button className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={() => navigate('ishrana', 'namirnice')}>Promeni namirnice</button>
+    </section>
   );
 }
 

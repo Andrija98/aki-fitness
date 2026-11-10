@@ -59,6 +59,7 @@ export async function resetAccount(account) {
     rest(`weights?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`enrollments?user_id=eq.${id}`, { token, method: 'DELETE' }),
     rest(`measurements?user_id=eq.${id}`, { token, method: 'DELETE' }),
+    rest(`food_preferences?client_id=eq.${id}`, { token, method: 'DELETE' }),
     rest('rpc/e2e_clear_messages', { token, method: 'POST', body: {} }), // radi samo za e2e naloge (docs/supabase-messages.sql)
     rest(`profiles?id=eq.${id}`, {
       token,

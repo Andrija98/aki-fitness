@@ -631,6 +631,71 @@ test.describe('trener: namirnice i struktura obroka', () => {
   });
 });
 
+test.describe('ishrana: izbor namirnica i plan za danas', () => {
+  let trainer;
+  // Proverene E2E namirnice za sve grupe i obroke, da plan ne zavisi od toga šta je Aki već proverio.
+  // Dok test traje, prave korisnike mogu da ih vide na listi; brišu se odmah posle.
+  const TEST_FOODS = [
+    ['E2E Piletina', 'protein', 120, 22.5, 0, 2.6, 100, 250],
+    ['E2E Jogurt', 'mlecni', 59, 10.2, 3.6, 0.4, 100, 300],
+    ['E2E Pirinač', 'uh', 365, 7.1, 80, 0.7, 40, 150],
+    ['E2E Ulje', 'mast', 884, 0, 0, 100, 5, 20],
+    ['E2E Brokoli', 'povrce', 34, 2.8, 6.6, 0.4, 100, 300],
+    ['E2E Banana', 'voce', 89, 1.1, 22.8, 0.3, 80, 200],
+  ];
+  const removeTestFoods = () => rest('foods?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+
+  test.beforeAll(async () => {
+    trainer = await resetAccount(ACCOUNT_TRAINER);
+    await removeTestFoods();
+    await rest('foods', { token: trainer.token, method: 'POST', body: TEST_FOODS.map(([name, food_group, kcal, protein_g, carbs_g, fat_g, min_g, max_g]) => ({
+      name, food_group, kcal, protein_g, carbs_g, fat_g, min_g, max_g, verified: true,
+      meal_types: ['dorucak', 'uzina1', 'rucak', 'uzina2', 'vecera'],
+    })) });
+  });
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await removeTestFoods();
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('klijent bira namirnice i dobija plan za danas sa gramažama', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
+      name: 'E2E Klijent', goal: 'mrsavljenje', location: 'kuca', level: 'pocetnik', per_week: 3,
+      sex: 'z', birth_year: new Date().getFullYear() - 25, height_cm: 165, activity: 'sedeci',
+    } });
+    await rest('weights', { token: client.token, method: 'POST', body: { user_id: client.id, date: '2000-01-01', kg: 60 } });
+
+    await loginUi(page, ACCOUNT_A);
+    await page.getByRole('link', { name: 'Ishrana' }).click();
+    await expect(page.locator('.target-kcal')).toContainText('1.290');
+    await page.getByRole('button', { name: 'Izaberi namirnice koje voliš' }).click();
+
+    for (const [name] of TEST_FOODS.filter(([, group]) => group !== 'voce')) await page.getByRole('checkbox', { name: new RegExp(name) }).check();
+    await expect(page.getByRole('note')).toContainText('Nisi izabrao ništa iz: voće');
+    await page.getByRole('checkbox', { name: /E2E Banana/ }).check();
+    await expect(page.getByRole('note')).toHaveCount(0);
+    await page.getByRole('button', { name: /Sačuvaj izbor/ }).click();
+
+    const plan = page.getByRole('region', { name: 'Plan za danas' });
+    await expect(plan).toBeVisible();
+    await expect(plan).toContainText('RUČAK');
+    await expect(plan).toContainText(/E2E Piletina\d* *\d+ g/);
+    await expect(plan).not.toContainText('predlog trenera');
+
+    const saved = await rest(`food_preferences?client_id=eq.${client.id}&select=food_id`, { token: client.token });
+    expect(saved.rows).toHaveLength(TEST_FOODS.length);
+
+    // Odčekiravanje briše samo tu namirnicu.
+    await page.getByRole('button', { name: 'Promeni namirnice' }).click();
+    await page.getByRole('checkbox', { name: /E2E Banana/ }).uncheck();
+    await page.getByRole('button', { name: /Sačuvaj izbor/ }).click();
+    await expect(plan).toBeVisible();
+    expect((await rest(`food_preferences?client_id=eq.${client.id}&select=food_id`, { token: client.token })).rows).toHaveLength(TEST_FOODS.length - 1);
+  });
+});
+
 test.describe('trener: video snimci', () => {
   test.afterAll(() => resetAccount(ACCOUNT_TRAINER));
 
