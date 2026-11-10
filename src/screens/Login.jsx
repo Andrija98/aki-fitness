@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { requestPasswordReset, signIn } from '../data/api.js';
 import { APP_NAME, TRAINER_NAME } from '../config.js';
+import { href } from '../lib/router.js';
 
 function errorMessage(error) {
   if (error?.code === 'invalid_credentials') return 'Pogrešan email ili lozinka.';
@@ -86,6 +87,7 @@ export default function Login() {
         <button className="text-btn" type="button" onClick={() => switchMode(!forgot)}>
           {forgot ? 'Nazad na prijavu' : 'Zaboravljena lozinka?'}
         </button>
+        <a className="small muted" href={href('privatnost')} style={{ textAlign: 'center' }}>Politika privatnosti</a>
       </div>
     </form>
   );

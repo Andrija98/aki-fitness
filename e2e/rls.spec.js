@@ -359,6 +359,13 @@ test.describe('plan ishrane', () => {
   });
 });
 
+test('pristanak na privatnost menja samo vlasnik', async () => {
+  const changed = await rest(`profiles?id=eq.${a.id}`, { token: b.token, method: 'PATCH', body: { privacy_accepted_at: null } });
+  expect(changed.rows).toEqual([]);
+  const trainerChanged = await rest(`profiles?id=eq.${a.id}`, { token: trainer.token, method: 'PATCH', body: { privacy_accepted_at: null } });
+  expect(trainerChanged.rows).toEqual([]);
+});
+
 test('klijent ne može da menja raspored programa', async () => {
   const added = await rest('program_schedule', { token: b.token, method: 'POST', body: { program_id: LAGANO, position: 99, workout_id: GORNJI } });
   expect(added.status).toBe(DENIED);

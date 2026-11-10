@@ -5,6 +5,7 @@ import {
   ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, KARDIO, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding,
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
+import { PRIVACY_CONTROLLER, PRIVACY_EMAIL } from '../src/config.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
 
@@ -1122,5 +1123,58 @@ test.describe('prijavljen klijent', () => {
     const saved = (await sessions()).rows;
     expect(saved).toHaveLength(1);
     expect(saved[0].session_sets).toHaveLength(1);
+  });
+});
+
+test.describe('privatnost', () => {
+  test.afterAll(() => resetAccount(ACCOUNT_A));
+
+  test('politika se otvara bez prijave, sa Login ekrana', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Politika privatnosti' }).click();
+    await expect(page.getByRole('heading', { name: 'Politika privatnosti', level: 1 })).toBeVisible();
+    await expect(page.getByText(PRIVACY_CONTROLLER).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: PRIVACY_EMAIL }).first()).toHaveAttribute('href', `mailto:${PRIVACY_EMAIL}`);
+    await expect(page.getByText('Evropskoj uniji (Irska)', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Nazad' }).click();
+    await expect(page.getByRole('heading', { name: 'Prijavi se' })).toBeVisible();
+  });
+
+  test('bez pristanka nema dalje, a pristanak se upisuje (važi i za postojeće naloge)', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { privacy_accepted_at: null } });
+    const consent = async () => (await rest(`profiles?id=eq.${client.id}&select=privacy_accepted_at`, { token: client.token })).rows[0].privacy_accepted_at;
+
+    await loginUi(page, ACCOUNT_A);
+    await expect(page.getByRole('heading', { name: 'Tvoji podaci' })).toBeVisible();
+    const accept = page.getByRole('button', { name: 'Prihvatam i nastavljam' });
+    await expect(accept).toBeDisabled();
+
+    // Odbijanje odjavljuje; pri sledećoj prijavi pristanak se traži ponovo.
+    await page.getByRole('button', { name: 'Ne prihvatam, odjavi me' }).click();
+    await expect(page.getByRole('heading', { name: 'Prijavi se' })).toBeVisible();
+    await loginUi(page, ACCOUNT_A);
+    await expect(page.getByRole('heading', { name: 'Tvoji podaci' })).toBeVisible();
+
+    // Iz pristanka se otvara cela politika i vraća nazad.
+    await page.getByRole('link', { name: 'Pročitaj celu politiku privatnosti' }).click();
+    await expect(page.getByRole('heading', { name: 'Politika privatnosti', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: 'Nazad' }).click();
+    await expect(page.getByRole('heading', { name: 'Tvoji podaci' })).toBeVisible();
+    expect(await consent()).toBeNull();
+
+    const before = Date.now();
+    await page.getByRole('checkbox', { name: /Saglasan sam/ }).check();
+    await accept.click();
+    await expect(page.getByLabel('Ime')).toBeVisible(); // posle pristanka ide onboarding
+    const acceptedAt = new Date(await consent()).getTime();
+    expect(acceptedAt).toBeGreaterThan(before - 60_000);
+    expect(acceptedAt).toBeLessThan(Date.now() + 60_000);
+
+    // Posle onboardinga, link je i u Profilu.
+    await finishOnboarding(page);
+    await page.goto('/#/profil');
+    await page.getByRole('button', { name: 'Politika privatnosti' }).click();
+    await expect(page.getByRole('heading', { name: 'Politika privatnosti', level: 1 })).toBeVisible();
   });
 });

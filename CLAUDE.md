@@ -20,7 +20,7 @@ radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
 ```
 src/
   main.jsx            ulaz: render + registracija service workera (samo u produkciji)
-  App.jsx             bira ekran: nije prijavljen → Login, nema profila → Onboarding, inače po ruti (#/...)
+  App.jsx             bira ekran: nije prijavljen → Login, nema pristanka → PrivacyConsent, nema profila → Onboarding, inače po ruti (#/...)
   config.js           ime trenera i aplikacije
   data/api.js         JEDINO mesto za čitanje/pisanje podataka (async funkcije)
   lib/supabase.js     Supabase klijent (koristi ga samo api.js)
@@ -36,14 +36,14 @@ src/
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans, -hardening (tim redom)
+docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans, -privacy, -hardening (tim redom)
 public/               manifest, sw.js, ikonice
 e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
 
 ## Rute
 `#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id`, `#/trener-treninzi`, `#/trener-trening/:id|novi`, `#/trener-programi`, `#/trener-program/:id|novi`, `#/namirnice`, `#/namirnica/:id|nova`, `#/obroci` (poslednjih deset samo trener), `#/ciljevi`,
-`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (cilj, nedeljni plan i kvačice), `#/ishrana/namirnice` (izbor namirnica).
+`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (cilj, nedeljni plan i kvačice), `#/ishrana/namirnice` (izbor namirnica), `#/privatnost` (politika, i bez prijave).
 
 ## Pravila
 - **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.

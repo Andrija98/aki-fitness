@@ -321,3 +321,8 @@ select.text-input { appearance: none; }
 .meal-check.on .meal-check-dot { background: var(--color-accent-2-500); border-color: var(--color-accent-2-500); }
 .grams-row { gap: 10px; align-items: center; }
 .grams-input { width: 84px; padding: 10px 12px; text-align: right; background: var(--color-neutral-100); }
+
+/* Politika privatnosti */
+.policy p, .policy ul { margin: 0; line-height: 1.55; }
+.policy ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.policy a { color: var(--color-accent-700); font-weight: 600; }

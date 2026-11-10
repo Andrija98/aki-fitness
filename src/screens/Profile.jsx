@@ -101,6 +101,7 @@ export default function Profile({ profile }) {
         {profile.role === 'trainer' && <button onClick={() => navigate('trener-treninzi')}><span>Uređivanje treninga</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         {profile.role === 'trainer' && <button onClick={() => navigate('vezbe')}><span>Vežbe</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         <button onClick={() => navigate('lozinka')}><span>Promeni lozinku</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
+        <button onClick={() => navigate('privatnost')}><span>Politika privatnosti</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={logout}><span>Odjavi se</span></button>
       </div>
     </div>

@@ -292,6 +292,20 @@ export async function saveProfile(profile) {
   return getProfile();
 }
 
+// Kada je korisnik prihvatio politiku privatnosti (ISO tekst), ili null ako nije.
+export async function getPrivacyConsent() {
+  const userId = await currentUserId();
+  const row = unwrap(await supabase.from('profiles').select('privacy_accepted_at').eq('id', userId).maybeSingle());
+  return row?.privacy_accepted_at ?? null;
+}
+
+export async function acceptPrivacy() {
+  const userId = await currentUserId();
+  const rows = unwrap(await supabase.from('profiles')
+    .update({ privacy_accepted_at: new Date().toISOString() }).eq('id', userId).select('id'));
+  if (!rows.length) throw new Error('Pristanak nije sačuvan.');
+}
+
 // Prvi predlog programa na osnovu onboardinga.
 async function suggestProgram(profile) {
   const programs = await getPrograms();

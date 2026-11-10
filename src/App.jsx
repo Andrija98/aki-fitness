@@ -1,11 +1,12 @@
 // Koren aplikacije: odlučuje koji ekran se prikazuje.
-// 1) Nije prijavljen → login.  2) Nema profila → onboarding.  3) Inače ekran prema adresi (#/...).
+// 0) #/privatnost → politika privatnosti (i bez prijave).  1) Nije prijavljen → login.
+// 2) Nije prihvatio politiku → pristanak.  3) Nema profila → onboarding.  4) Inače ekran prema adresi (#/...).
 
 import { useRoute, navigate, back } from './lib/router.js';
 import { useData } from './lib/useData.js';
 import { useToast, toast } from './lib/toast.js';
 import { useAuth } from './lib/useAuth.js';
-import { getProfile } from './data/api.js';
+import { getPrivacyConsent, getProfile } from './data/api.js';
 import TabBar from './components/TabBar.jsx';
 import LoadError from './components/LoadError.jsx';
 import Login from './screens/Login.jsx';
@@ -33,6 +34,8 @@ import FoodPreferences from './screens/FoodPreferences.jsx';
 import Foods from './screens/Foods.jsx';
 import FoodEditor from './screens/FoodEditor.jsx';
 import MealTemplates from './screens/MealTemplates.jsx';
+import PrivacyPolicy from './screens/PrivacyPolicy.jsx';
+import PrivacyConsent from './screens/PrivacyConsent.jsx';
 
 // Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
 const TAB_FOR_ROUTE = {
@@ -47,7 +50,9 @@ const TAB_FOR_ROUTE = {
 
 export default function App() {
   const { session, loading, recovering, finishRecovery } = useAuth();
+  const route = useRoute();
 
+  if (route.name === 'privatnost') return <PrivacyPolicy />;
   if (loading) return null;
   if (!session) return <Login />;
   // Oporavak ima prednost nad ruterom: link iz mejla nosi token u #, isto gde ruter čita adresu.
@@ -73,13 +78,16 @@ function ChatHeader() {
 function AuthedApp() {
   const route = useRoute();
   const { data: profile, loading, error, reload } = useData(getProfile);
+  const consent = useData(getPrivacyConsent);
   const toastMessage = useToast();
-  const unread = useUnread(profile?.role === 'trainer', Boolean(profile));
+  const unread = useUnread(profile?.role === 'trainer', Boolean(profile) && Boolean(consent.data));
 
-  if (loading) return null;
+  if (loading || consent.loading) return null;
 
   // Bez ovoga bi pad mreže izgledao kao "nema profila" i klijent bi dobio onboarding.
-  if (error) return <LoadError onRetry={reload} />;
+  if (error || consent.error) return <LoadError onRetry={() => { reload(); consent.reload(); }} />;
+
+  if (!consent.data) return <PrivacyConsent onDone={consent.reload} />;
 
   if (!profile || route.name === 'ciljevi') {
     return <Onboarding initial={profile} onDone={reload} />;
