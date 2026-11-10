@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { toast } from '../lib/toast.js';
 import { clearNutritionTarget, getNutrition, setNutritionTarget } from '../data/api.js';
-import { ACTIVITY, ageFromBirthYear } from '../lib/nutrition.js';
+import { ACTIVITY, ageFromBirthYear, goalSummary } from '../lib/nutrition.js';
 import { formatNumber } from '../lib/format.js';
 import { currentTarget } from './Nutrition.jsx';
 
@@ -67,6 +67,12 @@ function Card({ clientId, data, onSaved }) {
           : computed ? `Preporuka po formuli: ${formatNumber(computed.kcal, 0)} kcal · P ${computed.protein} · UH ${computed.carbs} · M ${computed.fat} g`
             : 'Preporuka nije dostupna dok ne unese podatke.'}
       </span>
+      {computed && !computed.minor && (
+        <span className="small muted">
+          {goalSummary(data.goal, computed)}
+          {computed.proteinBasisKg < data.weightKg && ` · proteini za ${computed.proteinBasisKg} kg (BMI preko 30)`}
+        </span>
+      )}
 
       <div className="editor-grid">
         {FIELDS.map(([key, label]) => (

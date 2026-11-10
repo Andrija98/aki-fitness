@@ -1,7 +1,7 @@
 // Formula kalkulatora, bez browsera i baze. Očekivane vrednosti su izračunate ručno, korak po korak.
 
 import { test, expect } from '@playwright/test';
-import { calculateTargets, ageFromBirthYear, macrosMatchKcal } from '../src/lib/nutrition.js';
+import { calculateTargets, ageFromBirthYear, macrosMatchKcal, goalSummary, proteinBasisKg } from '../src/lib/nutrition.js';
 
 test('provera kalorija i makroa hvata grešku u kucanju', () => {
   // Pileća prsa: 4·23 + 4·0 + 9·1,2 = 102,8 kcal, upisano 110 → u redu (razlika 7 %)
@@ -16,7 +16,7 @@ test('muškarac, kondicija: Mifflin-St Jeor × aktivnost, bez korekcije', () => 
   // BMR = 10·80 + 6,25·180 − 5·30 + 5 = 1780; × 1,55 = 2759 → 2760 kcal
   // proteini 1,6·80 = 128 → 130 g; masti 25 % = 76,7 → 75 g; UH (2760 − 520 − 675) / 4 = 391 → 390 g
   expect(calculateTargets({ sex: 'm', age: 30, heightCm: 180, weightKg: 80, activity: 'umereno', goal: 'kondicija' }))
-    .toEqual({ kcal: 2760, protein: 130, carbs: 390, fat: 75, bmr: 1780, tdee: 2759 });
+    .toEqual({ kcal: 2760, protein: 130, carbs: 390, fat: 75, bmr: 1780, tdee: 2759, proteinBasisKg: 80, atMinimum: false });
 });
 
 test('muškarac, mršavljenje: −20 % i više proteina', () => {
@@ -51,4 +51,30 @@ test('ispod 18 godina nema preporuke, a fali li podatak, nema ni računa', () =>
 
 test('godine iz godine rođenja', () => {
   expect(ageFromBirthYear(1995, new Date('2026-11-09'))).toBe(31);
+});
+
+const MAN = { sex: 'm', age: 30, heightCm: 180, weightKg: 80, activity: 'umereno' };
+
+test('red sa ciljem objašnjava odakle su kalorije', () => {
+  // potrošnja 2759; mršavljenje 2210 → 549 manje; snaga 2759 × 1,1 = 3035 → 3030 → 271 više
+  const lose = calculateTargets({ ...MAN, goal: 'mrsavljenje' });
+  expect(goalSummary('mrsavljenje', lose)).toBe('Mršavljenje · 549 kcal manje od potrošnje (2.759)');
+  const gain = calculateTargets({ ...MAN, goal: 'snaga' });
+  expect(goalSummary('snaga', gain)).toBe('Snaga i mišići · 271 kcal više od potrošnje (2.759)');
+  const keep = calculateTargets({ ...MAN, goal: 'kondicija' });
+  expect(goalSummary('kondicija', keep)).toBe('Kondicija i energija · održavanje, koliko trošiš (2.759 kcal)');
+  // potrošnja 926,5 × 1,2 = 1112; −20 % bi bilo 889, pa važi donja granica
+  const floor = calculateTargets({ sex: 'z', age: 60, heightCm: 150, weightKg: 45, activity: 'sedeci', goal: 'mrsavljenje' });
+  expect(floor.atMinimum).toBe(true);
+  expect(goalSummary('mrsavljenje', floor)).toBe('Mršavljenje · donja granica od 1.200 kcal (potrošnja 1.112)');
+});
+
+test('iznad BMI 30 proteini se računaju za težinu koja odgovara BMI 25', () => {
+  // 180 cm: BMI 25 = 81 kg. 97 kg je BMI 29,9 (stvarna težina), 98 kg je BMI 30,2 (81 kg)
+  expect(proteinBasisKg(97, 180)).toBe(97);
+  expect(proteinBasisKg(98, 180)).toBe(81);
+  // 120 kg, mršavljenje: 2,0 × 81 = 162 → 160 g, a ne 240 g
+  expect(calculateTargets({ ...MAN, weightKg: 120, goal: 'mrsavljenje' })).toMatchObject({ protein: 160, proteinBasisKg: 81 });
+  // kalorije i dalje idu po stvarnoj težini: BMR 10·120 + 1125 − 150 + 5 = 2180; × 1,55 × 0,8 = 2703 → 2700
+  expect(calculateTargets({ ...MAN, weightKg: 120, goal: 'mrsavljenje' }).kcal).toBe(2700);
 });

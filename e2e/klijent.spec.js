@@ -496,6 +496,9 @@ test.describe('ishrana: kalkulator', () => {
     await expect(page.locator('.stat-grid')).toContainText('125 g');
     await expect(page.locator('.stat-grid')).toContainText('35 g');
     await expect(page.getByText('Preporuka po formuli.', { exact: false })).toBeVisible();
+    // potrošnja 1345,25 × 1,2 = 1614 kcal, cilj 1290 → 324 manje
+    await expect(page.getByText('Mršavljenje · 324 kcal manje od potrošnje (1.614)')).toBeVisible();
+    await expect(page.getByText('Proteini su računati za', { exact: false })).toHaveCount(0);
 
     const weights = await rest(`weights?user_id=eq.${client.id}&select=kg`, { token: client.token });
     expect(weights.rows).toEqual([{ kg: 60 }]);
@@ -516,6 +519,7 @@ test.describe('ishrana: kalkulator', () => {
     await page.goto(`/#/klijent/${client.id}`);
     const card = page.getByRole('form', { name: 'Dnevni cilj ishrane' });
     await expect(card).toContainText('Preporuka po formuli: 1.290 kcal');
+    await expect(card).toContainText('Mršavljenje · 324 kcal manje od potrošnje (1.614)');
     await expect(page.getByLabel('Kalorije')).toHaveValue('1290');
 
     await page.getByLabel('Kalorije').fill('1500');

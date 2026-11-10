@@ -1,10 +1,10 @@
-// Ishrana (klijent): kalkulator dnevnog cilja. Plan obroka dolazi u sledećim koracima.
+// Ishrana (klijent): dnevni cilj i plan za danas.
 
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { toast } from '../lib/toast.js';
 import { getFoodPreferences, getFoods, getMealTemplates, getNutrition, saveBodyData } from '../data/api.js';
-import { ACTIVITY, MIN_AGE, ageFromBirthYear, calculateTargets } from '../lib/nutrition.js';
+import { ACTIVITY, GOAL_LABEL, MIN_AGE, ageFromBirthYear, calculateTargets, goalSummary } from '../lib/nutrition.js';
 import { generatePlan, weekdayIndex } from '../lib/mealPlan.js';
 import { navigate } from '../lib/router.js';
 import { formatNumber } from '../lib/format.js';
@@ -58,6 +58,11 @@ export default function Nutrition() {
           <p style={{ margin: 0 }}>{computed?.minor
             ? `Za mlađe od ${MIN_AGE} godina ne računamo cilj po formuli. Dogovori se sa ${TRAINER_NAME}jem.`
             : 'Fale podaci za računanje.'}</p>
+        )}
+        {target && !data.override && computed && <span className="small" style={{ fontWeight: 600 }}>{goalSummary(data.goal, computed)}</span>}
+        {target && data.override && <span className="small" style={{ fontWeight: 600 }}>{GOAL_LABEL[data.goal]}</span>}
+        {target && !data.override && computed && computed.proteinBasisKg < data.weightKg && (
+          <span className="small muted">Proteini su računati za {computed.proteinBasisKg} kg, zdravu težinu za tvoju visinu.</span>
         )}
         <span className="small muted">
           {data.override ? `Cilj postavio ${TRAINER_NAME}.` : `Preporuka po formuli. ${TRAINER_NAME} može da je prilagodi.`}
