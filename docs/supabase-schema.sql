@@ -182,6 +182,9 @@ create policy "težina: trener" on public.weights for select using (public.is_tr
 -- Namirnice i struktura obroka: docs/supabase-foods.sql, početne namirnice: docs/supabase-foods-seed.sql.
 -- Namirnice koje klijent voli: docs/supabase-food-preferences.sql.
 -- Sačuvan plan ishrane i kvačice "pojeo sam": docs/supabase-meal-plans.sql.
+-- Pristanak na politiku privatnosti: docs/supabase-privacy.sql.
+-- Fotografije napretka i verzija pristanka: docs/supabase-progress-photos.sql. Fotografije u porukama: docs/supabase-message-photos.sql.
+-- Bezbednost funkcija (pokreće se poslednji): docs/supabase-hardening.sql. Ceo redosled: docs/KAKO-RADI.md, poglavlje 6.
 
 create policy "mere: svoje"  on public.measurements for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "mere: trener" on public.measurements for select using (public.is_trainer());

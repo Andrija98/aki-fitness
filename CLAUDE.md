@@ -1,7 +1,7 @@
 # Treniraj sa Akijem — PWA za trenera i klijente
 
 Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, kasnije ishrana, napredak i poruke.
-Plan po fazama: `docs/PLAN.md`. Trenutno: **faza 2 u toku** (prijava i podaci na Supabase-u).
+Plan po fazama: `docs/PLAN.md`. Kako aplikacija radi: `docs/KAKO-RADI.md`. Uputstvo za trenera: `docs/VODIC-ZA-TRENERA.md`. Trenutno: **faza 3 u toku** (trener i komunikacija; sledeće po planu je članarina).
 
 Odgovaraj na srpskom (latinica). Ja sam QA automation inženjer (Java, Selenium, JUnit, Python),
 radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
@@ -29,9 +29,10 @@ src/
   lib/useData.js      hook za async učitavanje: const { data, reload } = useData(() => api(), [deps])
   lib/format.js       datumi, brojevi, nedelja, streak, YouTube ID
   lib/nutrition.js    kalkulator dnevnog cilja, grupe namirnica, obroci (čiste funkcije, testovi u e2e/nutrition.spec.js)
-  lib/mealPlan.js     generator plana ishrane (čista funkcija, testovi u e2e/mealplan.spec.js)
+  lib/mealPlan.js     generator plana ishrane i otisak ulaza (čista funkcija, testovi u e2e/mealplan.spec.js)
+  lib/image.js        smanjivanje fotografije pre slanja (canvas, JPEG)
   lib/toast.js        toast('Poruka') sa bilo kog mesta
-  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer), DayPicker (dani u nedelji)
+  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer), DayPicker (dani u nedelji), PhotoViewer (slika preko celog ekrana)
   screens/            jedan fajl po ekranu
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
@@ -58,7 +59,7 @@ e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js 
 - Tekst u aplikaciji je na srpskom (latinica).
 
 ## Provera pre commita
-`npm run build` mora da prođe. Ručno: onboarding → Početna → današnji trening → završi par serija
+`npm run build` mora da prođe. Posle nove funkcionalnosti ažuriraj `docs/KAKO-RADI.md` (i `docs/VODIC-ZA-TRENERA.md` ako se tiče trenera). Ručno: onboarding → Početna → današnji trening → završi par serija
 (pauza se pojavljuje) → rezime → Početna pokazuje kvačicu za danas. Konzola bez grešaka.
 
 ## Deploy
