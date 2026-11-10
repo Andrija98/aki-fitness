@@ -663,6 +663,20 @@ test.describe('ishrana: izbor namirnica, plan i kvačice', () => {
     await resetAccount(ACCOUNT_TRAINER);
   });
 
+  // Klijent sa podacima za 1.290 kcal (mršavljenje) koji voli sve E2E namirnice, bez plana.
+  async function prepareClient() {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
+      name: 'E2E Klijent', goal: 'mrsavljenje', location: 'kuca', level: 'pocetnik', per_week: 3,
+      sex: 'z', birth_year: new Date().getFullYear() - 25, height_cm: 165, activity: 'sedeci',
+    } });
+    await rest('weights', { token: client.token, method: 'POST', body: { user_id: client.id, date: '2000-01-01', kg: 60 } });
+    const foods = (await rest('foods?name=like.E2E*&select=id,name', { token: client.token })).rows;
+    await rest('food_preferences', { token: client.token, method: 'POST', body: foods.map((f) => ({ client_id: client.id, food_id: f.id })) });
+    const plans = async () => (await rest(`meal_plans?client_id=eq.${client.id}&select=id,locked,meal_plan_items(id)`, { token: client.token })).rows;
+    return { client, foods, plans };
+  }
+
   test('klijent bira namirnice i dobija plan za danas sa gramažama', async ({ page }) => {
     const client = await resetAccount(ACCOUNT_A);
     await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
@@ -700,15 +714,7 @@ test.describe('ishrana: izbor namirnica, plan i kvačice', () => {
   });
 
   test('plan se čuva, kvačica smanjuje preostale kalorije, a promena izbora pravi nov plan', async ({ page }) => {
-    const client = await resetAccount(ACCOUNT_A);
-    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: {
-      name: 'E2E Klijent', goal: 'mrsavljenje', location: 'kuca', level: 'pocetnik', per_week: 3,
-      sex: 'z', birth_year: new Date().getFullYear() - 25, height_cm: 165, activity: 'sedeci',
-    } });
-    await rest('weights', { token: client.token, method: 'POST', body: { user_id: client.id, date: '2000-01-01', kg: 60 } });
-    const foods = (await rest('foods?name=like.E2E*&select=id,name', { token: client.token })).rows;
-    await rest('food_preferences', { token: client.token, method: 'POST', body: foods.map((f) => ({ client_id: client.id, food_id: f.id })) });
-    const plans = async () => (await rest(`meal_plans?client_id=eq.${client.id}&select=id,locked,meal_plan_items(id)`, { token: client.token })).rows;
+    const { client, foods, plans } = await prepareClient();
     const checks = async () => (await rest(`meal_checks?client_id=eq.${client.id}&select=date,meal_type,kcal`, { token: client.token })).rows;
     const today = new Date().toLocaleDateString('sv-SE');
 
@@ -760,6 +766,64 @@ test.describe('ishrana: izbor namirnica, plan i kvačice', () => {
     await expect(page.getByRole('button', { name: 'Pojeo sam: Doručak' })).toHaveAttribute('aria-pressed', 'false');
     await expect.poll(async () => (await checks()).length, { timeout: 15000 }).toBe(0);
     await expect(ring).toContainText('1.290');
+  });
+
+  test('trener menja grame i zaključava plan, a posle otključavanja plan se opet pravi sam', async ({ page, browser }) => {
+    const { client, foods, plans } = await prepareClient();
+    const chicken = foods.find((f) => f.name === 'E2E Piletina');
+    const banana = foods.find((f) => f.name === 'E2E Banana');
+    const todayIndex = (new Date().getDay() + 6) % 7;
+
+    // Klijent otvori Ishranu i dobije plan.
+    const clientContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const clientPage = await clientContext.newPage();
+    await loginUi(clientPage, ACCOUNT_A);
+    await clientPage.getByRole('link', { name: 'Ishrana' }).click();
+    await expect.poll(async () => (await plans()).length, { timeout: 15000 }).toBe(1);
+    const [first] = await plans();
+
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/klijent/${client.id}`);
+    const card = page.getByRole('region', { name: 'Plan ishrane klijenta' });
+    await expect(card).toContainText('Otključan');
+    await expect(card).toContainText('Ove nedelje pojedeno 0 od');
+    await expect(card).toContainText(' / 1.290 kcal');
+
+    const chickenAtLunch = card.getByLabel('E2E Piletina, Ručak (g)');
+    await chickenAtLunch.fill('0');
+    await card.getByRole('button', { name: 'Sačuvaj i zaključaj' }).click();
+    await expect(card.getByRole('alert')).toHaveText('Gramaža mora biti ceo broj od 1 do 2000.');
+    await chickenAtLunch.fill('200');
+    await card.getByRole('button', { name: 'Sačuvaj i zaključaj' }).click();
+    await expect(page.getByText('Plan sačuvan i zaključan')).toBeVisible();
+    await expect(card).toContainText('Zaključan');
+
+    const lunchItem = async () => (await rest(
+      `meal_plan_items?plan_id=eq.${first.id}&weekday=eq.${todayIndex}&meal_type=eq.rucak&food_id=eq.${chicken.id}&select=grams`,
+      { token: client.token },
+    )).rows;
+    expect(await lunchItem()).toEqual([{ grams: 200 }]);
+    expect((await plans())[0]).toMatchObject({ id: first.id, locked: true });
+
+    // Klijent vidi Akijeve grame; promena izbora više ne pravi nov plan.
+    await rest(`food_preferences?client_id=eq.${client.id}&food_id=eq.${banana.id}`, { token: client.token, method: 'DELETE' });
+    await clientPage.reload();
+    const lunchCard = clientPage.locator('.meal-card').filter({ has: clientPage.getByRole('button', { name: 'Pojeo sam: Ručak', exact: true }) });
+    await expect(lunchCard).toContainText(/E2E Piletina\s*200 g/);
+    await expect(clientPage.getByText('Plan je pripremio', { exact: false })).toBeVisible();
+    await expect(clientPage.getByRole('button', { name: 'Promeni namirnice' })).toHaveCount(0);
+    expect((await plans()).map((p) => p.id)).toEqual([first.id]);
+
+    // Otključavanje: klijentov plan se pri sledećem otvaranju pravi ponovo (izbor se u međuvremenu promenio).
+    await card.getByRole('button', { name: 'Otključaj plan' }).click();
+    await expect(page.getByText('Plan otključan')).toBeVisible();
+    await expect(card).toContainText('Otključan');
+    await clientPage.reload();
+    await expect(clientPage.getByRole('button', { name: 'Promeni namirnice' })).toBeVisible();
+    await expect.poll(async () => (await plans()).map((p) => p.id), { timeout: 15000 }).not.toEqual([first.id]);
+    await clientContext.close();
   });
 });
 

@@ -319,3 +319,5 @@ select.text-input { appearance: none; }
 }
 .meal-check-dot svg { width: 16px; height: 16px; }
 .meal-check.on .meal-check-dot { background: var(--color-accent-2-500); border-color: var(--color-accent-2-500); }
+.grams-row { gap: 10px; align-items: center; }
+.grams-input { width: 84px; padding: 10px 12px; text-align: right; background: var(--color-neutral-100); }

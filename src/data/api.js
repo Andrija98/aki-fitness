@@ -609,8 +609,8 @@ export async function saveMealTemplates(templates) {
 
 // ---------- Ishrana: namirnice koje klijent voli ----------
 
-export async function getFoodPreferences() {
-  const userId = await currentUserId();
+export async function getFoodPreferences(forUserId) {
+  const userId = forUserId ?? await currentUserId();
   return unwrap(await supabase.from('food_preferences').select('food_id').eq('client_id', userId)).map((r) => r.food_id);
 }
 
@@ -628,10 +628,11 @@ export async function saveFoodPreferences(foodIds) {
 // ---------- Ishrana: sačuvan plan i kvačice ----------
 
 // Važeći plan je najnoviji (posle zamene stari se briše, ali za kratko mogu da postoje oba).
-export async function getMealPlan() {
-  const userId = await currentUserId();
+// Bez parametra: prijavljeni korisnik; trener prosleđuje id klijenta.
+export async function getMealPlan(forUserId) {
+  const userId = forUserId ?? await currentUserId();
   const rows = unwrap(await supabase.from('meal_plans')
-    .select('id, locked, target, inputs_key, meal_plan_items(weekday, meal_type, food_id, grams, suggested, position)')
+    .select('id, locked, target, inputs_key, meal_plan_items(id, weekday, meal_type, food_id, grams, suggested, position)')
     .eq('client_id', userId).order('created_at', { ascending: false }).limit(1));
   const p = rows[0];
   if (!p) return null;
@@ -641,7 +642,7 @@ export async function getMealPlan() {
     target: p.target,
     inputsKey: p.inputs_key,
     items: p.meal_plan_items.map((i) => ({
-      weekday: i.weekday, mealType: i.meal_type, foodId: i.food_id, grams: i.grams, suggested: i.suggested, position: i.position,
+      id: i.id, weekday: i.weekday, mealType: i.meal_type, foodId: i.food_id, grams: i.grams, suggested: i.suggested, position: i.position,
     })),
   };
 }
@@ -663,9 +664,24 @@ export async function replaceMealPlan({ target, inputsKey, items }) {
   return id;
 }
 
+// Trener: zaključava plan (klijentov generator ga više ne dira) i menja grame. Prvo zaključavanje,
+// da klijent u međuvremenu ne zameni plan; ako ga je već zamenio, plana sa tim id-jem nema i stiže greška.
+// changes: [{ id, grams }] samo izmenjene stavke.
+export async function saveMealPlanGrams(planId, changes) {
+  await setMealPlanLocked(planId, true);
+  const results = await Promise.all(changes.map(({ id, grams }) =>
+    supabase.from('meal_plan_items').update({ grams }).eq('id', id).eq('plan_id', planId).select('id')));
+  if (results.some((r) => r.error || !r.data.length)) throw new Error('Gramaže nisu sačuvane.');
+}
+
+export async function setMealPlanLocked(planId, locked) {
+  const rows = unwrap(await supabase.from('meal_plans').update({ locked }).eq('id', planId).select('id'));
+  if (!rows.length) throw new Error('Plan nije pronađen.');
+}
+
 // Kvačice u rasponu datuma (YYYY-MM-DD), uključujući oba kraja.
-export async function getMealChecks(from, to) {
-  const userId = await currentUserId();
+export async function getMealChecks(from, to, forUserId) {
+  const userId = forUserId ?? await currentUserId();
   const rows = unwrap(await supabase.from('meal_checks').select('date, meal_type, kcal, protein_g, carbs_g, fat_g')
     .eq('client_id', userId).gte('date', from).lte('date', to));
   return rows.map((r) => ({ date: r.date, mealType: r.meal_type, kcal: r.kcal, protein: r.protein_g, carbs: r.carbs_g, fat: r.fat_g }));

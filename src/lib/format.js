@@ -1,6 +1,7 @@
 // Pomoćne funkcije za datume i brojeve (srpski format).
 
 export const DAY_LETTERS = ['P', 'U', 'S', 'Č', 'P', 'S', 'N']; // ponedeljak → nedelja
+export const DAY_NAMES = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
 
 export function formatLongDate(d = new Date()) {
   const s = d.toLocaleDateString('sr-Latn-RS', { weekday: 'long', day: 'numeric', month: 'long' });

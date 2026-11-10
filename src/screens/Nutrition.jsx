@@ -9,10 +9,11 @@ import {
 import { ACTIVITY, MIN_AGE, ageFromBirthYear, calculateTargets, goalSummary } from '../lib/nutrition.js';
 import { generatePlan, inputsKey, itemsToDays, planToItems, weekdayIndex } from '../lib/mealPlan.js';
 import { navigate } from '../lib/router.js';
-import { currentWeek, dateKey, DAY_LETTERS, formatNumber, GOAL_LABEL } from '../lib/format.js';
+import { currentWeek, dateKey, DAY_NAMES, formatNumber, GOAL_LABEL } from '../lib/format.js';
 import { TRAINER_NAME } from '../config.js';
 import LoadError from '../components/LoadError.jsx';
 import Icon from '../components/Icon.jsx';
+import DayPicker from '../components/DayPicker.jsx';
 
 // Cilj koji važi: trenerov ako ga je postavio, inače preporuka po formuli.
 export function currentTarget(n) {
@@ -78,7 +79,6 @@ export default function Nutrition() {
   );
 }
 
-const DAY_NAMES = ['Ponedeljak', 'Utorak', 'Sreda', 'Četvrtak', 'Petak', 'Subota', 'Nedelja'];
 const MACRO_BARS = [
   ['Proteini', 'protein', 'var(--color-accent-2-600)'],
   ['UH', 'carbs', 'var(--color-accent)'],
@@ -168,14 +168,7 @@ function WeekPlanView({ target, templates, foods, likedIds, plan, checks: initia
 
   return (
     <section className="col" style={{ gap: 14 }} aria-label="Plan ishrane">
-      <div className="day-pick" role="group" aria-label="Dan u nedelji">
-        {week.map((d, i) => (
-          <button key={i} type="button" aria-pressed={i === day} aria-label={`${DAY_NAMES[i]} ${d.getDate()}.`}
-            className={[i === day && 'on', i === todayIndex && 'today'].filter(Boolean).join(' ')} onClick={() => setDay(i)}>
-            {DAY_LETTERS[i]}<br />{d.getDate()}
-          </button>
-        ))}
-      </div>
+      <DayPicker value={day} onChange={setDay} today={todayIndex} />
 
       <div className="surface row plan-summary">
         <div className="kcal-ring" style={{ '--pct': `${pct}%` }}>

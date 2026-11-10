@@ -31,7 +31,7 @@ src/
   lib/nutrition.js    kalkulator dnevnog cilja, grupe namirnica, obroci (čiste funkcije, testovi u e2e/nutrition.spec.js)
   lib/mealPlan.js     generator plana ishrane (čista funkcija, testovi u e2e/mealplan.spec.js)
   lib/toast.js        toast('Poruka') sa bilo kog mesta
-  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer)
+  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer), DayPicker (dani u nedelji)
   screens/            jedan fajl po ekranu
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
