@@ -14,6 +14,15 @@ import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
 import IpsQr from '../components/IpsQr.jsx';
 
+// 1 mesec, 2–4 meseca, 5+ meseci (11–14 meseci), 21 mesec…
+function monthsLabel(n) {
+  const last = n % 10;
+  const teens = n % 100 >= 11 && n % 100 <= 14;
+  if (last === 1 && !teens) return `${n} mesec`;
+  if (last >= 2 && last <= 4 && !teens) return `${n} meseca`;
+  return `${n} meseci`;
+}
+
 async function load() {
   const [payments, billing] = await Promise.all([getMembershipPayments(), getBillingSettings()]);
   return { payments, billing };
@@ -54,7 +63,7 @@ export default function Membership({ profile }) {
             <div key={p.id} className="log-line">
               <span className="col">
                 <span style={{ fontWeight: 600 }}>{formatDate(p.paidOn)}</span>
-                <span className="small muted">{p.months === 1 ? '1 mesec' : `${p.months} meseca`} · do {formatDate(p.periodEnd)}</span>
+                <span className="small muted">{monthsLabel(p.months)} · do {formatDate(p.periodEnd)}</span>
               </span>
               <span className="muted">{formatNumber(p.amountRsd, 0)} RSD</span>
             </div>

@@ -59,6 +59,7 @@ test('broj računa: crtice, dopuna nulama i kontrolni broj', () => {
   expect(isValidAccount('12345')).toBe(false);
   expect(normalizeAccount(`160-123456-${account.slice(16)}`)).toBe(account);
   expect(normalizeAccount(account)).toBe(account);
+  expect(normalizeAccount(` ${account.slice(0, 3)} ${account.slice(3, 16)} ${account.slice(16)} `)).toBe(account); // razmaci
   expect(normalizeAccount('160-12-3')).toBeNull();
   expect(normalizeAccount('abc')).toBeNull();
   expect(formatAccount(account)).toBe(`160-0000000123456-${account.slice(16)}`);

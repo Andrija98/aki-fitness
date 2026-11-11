@@ -46,3 +46,5 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
   na iPhone-u radi samo kad je aplikacija instalirana na početni ekran (iOS 16.4+).
 - Font naslova nema č i đ (iscrtavaju se rezervnim fontom); rešava se u dizajn sistemu.
 - Automatsko brisanje naloga (dugme "Obriši nalog"); do tada brisanje na zahtev, u roku od 30 dana.
+- Performanse baze kad bude više korisnika (Supabase savetnik): indeksi na stranim ključevima i `(select auth.uid())`
+  u polisama umesto `auth.uid()`; sada je razlika neprimetna.

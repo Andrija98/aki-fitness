@@ -9,7 +9,7 @@ export const PAYMENT_CODE = '289'; // šifra plaćanja: transakcije po nalogu gr
 // "160-123456-78" → "160000000012345678": banka (3) + partija dopunjena nulama (13) + kontrolni broj (2).
 // Vraća null ako oblik nije ispravan.
 export function normalizeAccount(input) {
-  const raw = String(input ?? '').trim();
+  const raw = String(input ?? '').replace(/\s+/g, ''); // razmaci iz kopiranog broja ("160 0000000123456 78") se ignorišu
   const parts = raw.split('-');
   if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
     const [bank, middle, control] = parts;
