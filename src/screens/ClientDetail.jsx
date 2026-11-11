@@ -9,6 +9,7 @@ import LoadError from '../components/LoadError.jsx';
 import Progress from './Progress.jsx';
 import TrainerNutritionCard from './TrainerNutritionCard.jsx';
 import TrainerMealPlanCard from './TrainerMealPlanCard.jsx';
+import TrainerMembershipCard from './TrainerMembershipCard.jsx';
 
 export default function ClientDetail({ clientId }) {
   const { data: client, loading, error, reload } = useData(() => getClient(clientId), [clientId]);
@@ -25,6 +26,7 @@ export default function ClientDetail({ clientId }) {
         <h1 className="screen-title">{client.name}</h1>
         <span className="muted">{GOAL_LABEL[client.goal] ?? 'Cilj nije izabran'}</span>
       </div>
+      <TrainerMembershipCard clientId={client.id} />
       <TrainerNutritionCard clientId={client.id} />
       <TrainerMealPlanCard clientId={client.id} />
     </>

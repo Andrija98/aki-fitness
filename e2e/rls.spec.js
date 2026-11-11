@@ -419,6 +419,35 @@ test('fotografije u porukama: samo učesnici razgovora, prilog samo iz tog razgo
   expect(left.json).toEqual([]);
 });
 
+test('članarina: klijent samo čita svoje uplate, drugi ih ne vidi, trener evidentira', async () => {
+  const payment = { client_id: a.id, paid_on: '2000-01-01', amount_rsd: 100, months: 1, period_end: '2000-01-31' };
+  expect((await rest('membership_payments', { token: a.token, method: 'POST', body: payment })).status).toBe(DENIED); // sam sebi
+  expect((await rest('membership_payments', { token: b.token, method: 'POST', body: payment })).status).toBe(DENIED);
+  const created = await rest('membership_payments', { token: trainer.token, method: 'POST', body: payment });
+  expect(created.status).toBe(201);
+  const id = created.rows[0].id;
+  try {
+    expect((await rest(`membership_payments?client_id=eq.${a.id}`, { token: a.token })).rows).toHaveLength(1);
+    expect((await rest(`membership_payments?client_id=eq.${a.id}`, { token: b.token })).rows).toEqual([]);
+    expect((await rest(`membership_payments?client_id=eq.${a.id}`)).rows).toEqual([]); // neprijavljen
+    // Klijent ne može da produži ni obriše svoju uplatu.
+    expect((await rest(`membership_payments?id=eq.${id}`, { token: a.token, method: 'PATCH', body: { period_end: '2999-01-01' } })).rows).toEqual([]);
+    expect((await rest(`membership_payments?id=eq.${id}`, { token: a.token, method: 'DELETE' })).rows).toEqual([]);
+  } finally {
+    await rest(`membership_payments?id=eq.${id}`, { token: trainer.token, method: 'DELETE' });
+  }
+});
+
+test('podatke za uplatu čitaju prijavljeni, a menja samo trener', async () => {
+  expect((await rest('billing_settings?select=id', { token: a.token })).rows).toHaveLength(1);
+  expect((await rest('billing_settings?select=id')).rows).toEqual([]); // neprijavljen ne vidi račun
+  expect((await rest('billing_settings?id=eq.1', { token: a.token, method: 'PATCH', body: { price_rsd: 1 } })).rows).toEqual([]);
+  expect((await rest('billing_settings', { token: a.token, method: 'POST', body: { id: 2 } })).status).toBeGreaterThanOrEqual(400);
+  // Trener sme da menja; menja se samo vreme izmene, da test ne dira prave podatke za uplatu.
+  const touched = await rest('billing_settings?id=eq.1', { token: trainer.token, method: 'PATCH', body: { updated_at: new Date().toISOString() } });
+  expect(touched.rows).toHaveLength(1);
+});
+
 test('pristanak na privatnost menja samo vlasnik', async () => {
   const changed = await rest(`profiles?id=eq.${a.id}`, { token: b.token, method: 'PATCH', body: { privacy_accepted_at: null } });
   expect(changed.rows).toEqual([]);

@@ -1,11 +1,12 @@
-// Profil: statistike, težina, članarina (placeholder do faze 3) i podešavanja.
+// Profil: statistike, težina, članarina (klijent) i podešavanja.
 
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { navigate, back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
 import { getSessions, getWeights, addWeight, signOut } from '../data/api.js';
-import { dayStreak, formatDuration, formatNumber } from '../lib/format.js';
+import { dayStreak, formatDate, formatDuration, formatNumber } from '../lib/format.js';
+import { membershipLabel } from '../lib/membership.js';
 import { TRAINER_NAME } from '../config.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
@@ -15,7 +16,7 @@ async function load() {
   return { sessions, weights };
 }
 
-export default function Profile({ profile }) {
+export default function Profile({ profile, member }) {
   const { data, error, reload } = useData(load);
   const [weight, setWeight] = useState('');
   if (error) return <LoadError onRetry={reload} />;
@@ -81,19 +82,19 @@ export default function Profile({ profile }) {
         </div>
       </form>
 
-      <div className="membership">
-        <span className="kicker" style={{ color: 'var(--color-accent-300)' }}>Tvoja članarina</span>
-        <span className="heading" style={{ fontSize: 26, lineHeight: 1.1 }}>Probni pristup</span>
-        <div className="col small" style={{ gap: 6, fontSize: 14 }}>
-          <span>✓ Video programi</span>
-          <span>✓ Praćenje treninga</span>
-          <span style={{ opacity: 0.6 }}>Lični plan ishrane i poruke sa {TRAINER_NAME}jem uskoro</span>
-        </div>
-      </div>
+      {member && (
+        <button type="button" className="membership" style={{ border: 0, textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate('clanarina')}>
+          <span className="kicker" style={{ color: 'var(--color-accent-300)' }}>Tvoja članarina</span>
+          <span className="heading" style={{ fontSize: 24, lineHeight: 1.15 }}>{membershipLabel(member)}</span>
+          <span className="small">{member.paidUntil ? `Plaćeno do ${formatDate(member.paidUntil)}` : `Pristup je otvoren dok ${TRAINER_NAME} ne evidentira prvu uplatu.`}</span>
+        </button>
+      )}
 
       <div className="list">
         <button onClick={() => navigate('ciljevi')}><span>Moji ciljevi</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
         <button onClick={() => navigate('treninzi')}><span>Promeni program</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>
+        {profile.role !== 'trainer' && <button onClick={() => navigate('clanarina')}><span>Članarina</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
+        {profile.role === 'trainer' && <button onClick={() => navigate('naplata')}><span>Naplata</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         {profile.role === 'trainer' && <button onClick={() => navigate('klijenti')}><span>Klijenti</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         {profile.role === 'trainer' && <button onClick={() => navigate('namirnice')}><span>Namirnice</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}
         {profile.role === 'trainer' && <button onClick={() => navigate('obroci')}><span>Struktura obroka</span><Icon name="chevronRight" size={18} style={{ color: 'var(--color-neutral-600)' }} /></button>}

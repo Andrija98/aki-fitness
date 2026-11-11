@@ -120,6 +120,13 @@ export async function resetAccount(account) {
   for (const result of await Promise.all(writes)) {
     if (result.status >= 400) throw new Error(`Čišćenje nije uspelo: ${JSON.stringify(result)}`);
   }
+  // Uplate članarine klijent samo čita; ako ih ima, briše ih trener.
+  const payments = await rest(`membership_payments?client_id=eq.${id}&select=id`, { token });
+  if (payments.rows?.length) {
+    const trainer = await apiLogin(ACCOUNT_TRAINER);
+    const removed = await rest(`membership_payments?client_id=eq.${id}`, { token: trainer.token, method: 'DELETE' });
+    if (removed.status >= 400) throw new Error('Čišćenje uplata članarine nije uspelo.');
+  }
   // Zaključan plan klijent ne sme da obriše: trener ga otključa, pa ga klijent obriše.
   const left = await rest(`meal_plans?client_id=eq.${id}&select=id`, { token });
   if (left.rows?.length) {

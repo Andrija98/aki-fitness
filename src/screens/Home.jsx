@@ -8,6 +8,7 @@ import { TRAINER_NAME } from '../config.js';
 import { Striped } from '../components/Media.jsx';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import { MembershipBanner } from '../components/MembershipNotice.jsx';
 
 async function loadHome() {
   const programId = await getActiveProgramId();
@@ -17,7 +18,7 @@ async function loadHome() {
   return { progress, workout, sessions, weights };
 }
 
-export default function Home({ profile }) {
+export default function Home({ profile, member }) {
   const { data, error, reload } = useData(loadHome);
   if (error) return <LoadError onRetry={reload} />;
   if (!data) return null;
@@ -42,6 +43,8 @@ export default function Home({ profile }) {
           {profile.name.charAt(0).toUpperCase()}
         </a>
       </div>
+
+      <MembershipBanner status={member} />
 
       {workout ? (
         <button className="today-card" onClick={() => navigate('trening', progress.program.id, workout.id)}>

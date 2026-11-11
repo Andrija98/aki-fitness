@@ -29,9 +29,12 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
    generator nedeljnog plana sa gramažama, kvačice "pojeo sam" (dizajn 05), trener menja grame i zaključava plan
 4. Fotografije napretka (Supabase Storage, privatni bucket), sa pre/posle poređenjem
 
-## Faza 4 — Članarina (treba da se uradi)
-- Plaćanje članarine. Za Srbiju proveriti opcije (npr. kartično plaćanje preko domaće banke ili servisa
-  koji podržava RSD), pa zaključavanje premium sadržaja prema statusu u bazi.
+## Faza 4 — Članarina (u toku)
+- ✅ Korak 1: trener ručno evidentira uplate, klijent plaća preko IPS QR koda (uplata na račun, bez ugovora sa bankom),
+  5 dana pristupa posle isteka, pa zaključavanje treninga i ishrane u aplikaciji.
+- Korak 2 (kad bude dovoljno klijenata): kartična naplata sa automatskim mesečnim plaćanjem (AllSecure ili Monri,
+  ugovor sa bankom), zaključavanje i u bazi.
+- Pre naplate pravim klijentima: registrovana delatnost (npr. paušalac) i provera fiskalnog računa kod knjigovođe.
 - Pravna strana: ✅ politika privatnosti i pristanak (nacrt, pre pravih klijenata da pogleda pravnik); uslovi korišćenja, fiskalizacija.
 - Pre pravih klijenata: sopstveni domen i slanje mejlova (Resend) za reset lozinke.
 

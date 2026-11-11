@@ -1,7 +1,7 @@
 # Treniraj sa Akijem — PWA za trenera i klijente
 
 Aplikacija trenera (Aki) za klijente: video programi, praćenje treninga, ishrana, napredak sa fotografijama i poruke.
-Plan po fazama: `docs/PLAN.md`. Kako aplikacija radi: `docs/KAKO-RADI.md`. Uputstvo za trenera: `docs/VODIC-ZA-TRENERA.md`. Trenutno: **faza 3 u toku** (trener i komunikacija; sledeće po planu je članarina).
+Plan po fazama: `docs/PLAN.md`. Kako aplikacija radi: `docs/KAKO-RADI.md`. Uputstvo za trenera: `docs/VODIC-ZA-TRENERA.md`. Trenutno: **faza 4 u toku** (članarina: korak 1 ručna evidencija i IPS QR).
 
 Odgovaraj na srpskom (latinica). Ja sam QA automation inženjer (Java, Selenium, JUnit, Python),
 radio sam i React/Node/PostgreSQL. Želim da RAZUMEM kod, ne samo da ga dobijem:
@@ -31,20 +31,21 @@ src/
   lib/nutrition.js    kalkulator dnevnog cilja, grupe namirnica, obroci (čiste funkcije, testovi u e2e/nutrition.spec.js)
   lib/mealPlan.js     generator plana ishrane i otisak ulaza (čista funkcija, testovi u e2e/mealplan.spec.js)
   lib/image.js        smanjivanje fotografije pre slanja (canvas, JPEG)
+  lib/membership.js   stanje i produženje članarine; lib/ips.js  NBS IPS QR i provera računa (čiste funkcije, e2e/membership.spec.js)
   lib/toast.js        toast('Poruka') sa bilo kog mesta
-  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer), DayPicker (dani u nedelji), PhotoViewer (slika preko celog ekrana)
+  components/         TabBar, Icon (Lucide), Media (Striped placeholder, VideoPlayer), DayPicker (dani u nedelji), PhotoViewer (slika preko celog ekrana), IpsQr, MembershipNotice
   screens/            jedan fajl po ekranu
   styles/organic.css  dizajn sistem (NE MENJATI ručno, to su tokeni iz Claude Design-a)
   styles/app.css      stilovi aplikacije, samo preko tokena
 design/               originalni dizajn iz Claude Design-a (referenca za nove ekrane)
-docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans, -privacy, -progress-photos, -message-photos, -workout-item-details, -hardening (tim redom); sadržaj programa: -program-kucni-muskarci
+docs/                 PLAN.md, SQL: supabase-schema.sql, -seed, -measurements, -messages, -nutrition-targets, -foods, -foods-seed, -food-preferences, -meal-plans, -privacy, -progress-photos, -message-photos, -workout-item-details, -memberships, -hardening (tim redom); sadržaj programa: -program-kucni-muskarci
 public/               manifest, sw.js, ikonice
 e2e/                  Playwright: klijent.spec.js (tokovi kroz UI), rls.spec.js (bezbednost baze)
 ```
 
 ## Rute
 `#/pocetna`, `#/treninzi`, `#/program/:id`, `#/trening/:programId/:workoutId`, `#/profil`, `#/lozinka`, `#/vezbe`, `#/klijenti`, `#/klijent/:id`, `#/trener-treninzi`, `#/trener-trening/:id|novi`, `#/trener-programi`, `#/trener-program/:id|novi`, `#/namirnice`, `#/namirnica/:id|nova`, `#/obroci` (poslednjih deset samo trener), `#/ciljevi`,
-`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (cilj, nedeljni plan i kvačice), `#/ishrana/namirnice` (izbor namirnica), `#/privatnost` (politika, i bez prijave).
+`#/napredak`, `#/poruke` (trener: sanduče, `#/poruke/:klijentId` razgovor), `#/ishrana` (cilj, nedeljni plan i kvačice), `#/ishrana/namirnice` (izbor namirnica), `#/privatnost` (politika, i bez prijave), `#/clanarina` (klijent: stanje i IPS QR), `#/naplata` (trener: podaci za uplatu).
 
 ## Pravila
 - **Podaci samo kroz `src/data/api.js`.** Ekrani nikad ne zovu Supabase direktno. Sve funkcije su async.

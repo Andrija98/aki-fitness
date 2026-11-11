@@ -6,7 +6,9 @@ import { useRoute, navigate, back } from './lib/router.js';
 import { useData } from './lib/useData.js';
 import { useToast, toast } from './lib/toast.js';
 import { useAuth } from './lib/useAuth.js';
-import { getPrivacyConsent, getProfile } from './data/api.js';
+import { getMembershipPayments, getPrivacyConsent, getProfile } from './data/api.js';
+import { membershipStatus, paidUntilOf } from './lib/membership.js';
+import { dateKey } from './lib/format.js';
 import TabBar from './components/TabBar.jsx';
 import LoadError from './components/LoadError.jsx';
 import Login from './screens/Login.jsx';
@@ -36,6 +38,9 @@ import FoodEditor from './screens/FoodEditor.jsx';
 import MealTemplates from './screens/MealTemplates.jsx';
 import PrivacyPolicy from './screens/PrivacyPolicy.jsx';
 import PrivacyConsent from './screens/PrivacyConsent.jsx';
+import Membership from './screens/Membership.jsx';
+import BillingSettings from './screens/BillingSettings.jsx';
+import { MembershipLocked } from './components/MembershipNotice.jsx';
 
 // Ekrani na kojima se vidi donja navigacija i koji tab je tada aktivan.
 const TAB_FOR_ROUTE = {
@@ -79,11 +84,16 @@ function AuthedApp() {
   const route = useRoute();
   const { data: profile, loading, error, reload } = useData(getProfile);
   const consent = useData(getPrivacyConsent);
+  // Uplate se čitaju ponovo pri svakoj promeni ekrana: kad trener evidentira uplatu, klijent se otključa bez ponovnog pokretanja.
+  // Nova funkcija u svakom render-u: useData (useCallback) vraća novu referencu tek kad se deps promene.
+  // Sa samim getMembershipPayments referenca bi uvek bila ista i ponovno učitavanje se ne bi desilo.
+  const membership = useData(() => getMembershipPayments(), [route.name]);
   const toastMessage = useToast();
   const consented = Boolean(consent.data) && consent.data.version >= PRIVACY_VERSION;
   const unread = useUnread(profile?.role === 'trainer', Boolean(profile) && consented);
 
-  if (loading || consent.loading) return null;
+  // Na članarinu se čeka samo pri prvom učitavanju (kasnije osvežavanje ne sme da sakrije ekran).
+  if (loading || consent.loading || (membership.loading && !membership.data && !membership.error)) return null;
 
   // Bez ovoga bi pad mreže izgledao kao "nema profila" i klijent bi dobio onboarding.
   if (error || consent.error) return <LoadError onRetry={() => { reload(); consent.reload(); }} />;
@@ -97,12 +107,18 @@ function AuthedApp() {
 
   const [p1, p2] = route.params;
   const isTrainer = profile.role === 'trainer';
+  // Članarina važi samo za klijente. Ako uplate ne mogu da se učitaju, ništa se ne zaključava.
+  const member = !isTrainer && membership.data ? membershipStatus(paidUntilOf(membership.data), dateKey(new Date())) : null;
+  const locked = Boolean(member && !member.hasAccess);
   let screen;
-  switch (route.name) {
+  switch (locked && ['treninzi', 'program', 'trening', 'ishrana'].includes(route.name) ? 'zakljucano' : route.name) {
+    case 'zakljucano': screen = <MembershipLocked status={member} />; break;
+    case 'clanarina': screen = isTrainer ? <Home profile={profile} /> : <Membership profile={profile} />; break;
+    case 'naplata': screen = isTrainer ? <BillingSettings /> : <Home profile={profile} member={member} />; break;
     case 'treninzi': screen = <Programs />; break;
     case 'program': screen = <ProgramDetail programId={p1} />; break;
     case 'trening': screen = <WorkoutSession programId={p1} workoutId={p2} />; break;
-    case 'profil': screen = <Profile profile={profile} />; break;
+    case 'profil': screen = <Profile profile={profile} member={member} />; break;
     case 'lozinka': screen = <NewPassword onDone={() => { toast('Lozinka promenjena'); navigate('profil'); }} onCancel={() => back('profil')} />; break;
     case 'ishrana': screen = p1 === 'namirnice' ? <FoodPreferences /> : <Nutrition />; break;
     case 'napredak': screen = <Progress />; break;
@@ -120,7 +136,7 @@ function AuthedApp() {
       if (isTrainer) screen = p1 ? <ClientChat clientId={p1} /> : <Inbox />;
       else screen = <Chat header={<ChatHeader />} emptyText={`Pitaj ${TRAINER_NAME}ja bilo šta o treninzima i ishrani.`} />;
       break;
-    default: screen = <Home profile={profile} />;
+    default: screen = <Home profile={profile} member={member} />;
   }
 
   const tab = TAB_FOR_ROUTE[route.name] ?? (['trening', 'lozinka', 'trener-trening', 'trener-program', 'namirnica', 'obroci'].includes(route.name) ? null : 'pocetna');

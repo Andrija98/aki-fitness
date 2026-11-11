@@ -6,6 +6,7 @@ import {
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
 import { PRIVACY_CONTROLLER, PRIVACY_EMAIL, PRIVACY_VERSION } from '../src/config.js';
+import { addDays, extendPaidUntil } from '../src/lib/membership.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
 
@@ -1414,5 +1415,136 @@ test.describe('fotografije napretka', () => {
     await expect(trainer.getByRole('button', { name: 'Obriši fotografiju' })).toHaveCount(0);
     await trainerContext.close();
     await resetAccount(ACCOUNT_TRAINER);
+  });
+});
+
+test.describe('članarina', () => {
+  let trainer;
+  const today = new Date().toLocaleDateString('sv-SE');
+  // Ispravan test račun (kontrolni broj po MOD 97-10); prava podešavanja naplate testovi ne diraju.
+  const base = '1600000000123456';
+  const ACCOUNT = base + String(98n - ((BigInt(base) * 100n) % 97n)).padStart(2, '0');
+  const mockBilling = (page) => page.route('**/rest/v1/billing_settings*', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({ json: { payee_name: 'E2E Trener', account: ACCOUNT, price_rsd: 2500 } });
+  });
+  const pay = (clientId, periodEnd) => rest('membership_payments', { token: trainer.token, method: 'POST', body: {
+    client_id: clientId, paid_on: addDays(periodEnd, -30), amount_rsd: 2500, months: 1, period_end: periodEnd,
+  } });
+
+  test.beforeAll(async () => { trainer = await resetAccount(ACCOUNT_TRAINER); });
+  test.afterAll(async () => {
+    await resetAccount(ACCOUNT_A);
+    await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('trener evidentira uplatu, a klijent vidi aktivnu članarinu, QR i javlja da je platio', async ({ page, browser }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+
+    // Bez ijedne uplate: pristup bez ograničenja.
+    await mockBilling(page);
+    await loginUi(page, ACCOUNT_A);
+    await page.goto('/#/profil');
+    await expect(page.getByRole('button', { name: /Tvoja članarina/ })).toContainText('Članarina nije aktivirana');
+
+    // Trener evidentira uplatu u profilu klijenta.
+    const trainerContext = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 412, height: 839 } });
+    const trainerPage = await trainerContext.newPage();
+    await loginUi(trainerPage, ACCOUNT_TRAINER);
+    await finishOnboarding(trainerPage);
+    await trainerPage.goto(`/#/klijent/${client.id}`);
+    const card = trainerPage.getByRole('form', { name: 'Članarina klijenta' });
+    await expect(card).toContainText('Nema evidentiranih uplata');
+    await card.getByLabel('Iznos (RSD)').fill('2500');
+    await card.getByLabel('Meseci').fill('0');
+    await card.getByRole('button', { name: 'Evidentiraj uplatu' }).click();
+    await expect(card.getByRole('alert')).toHaveText('Broj meseci mora biti od 1 do 24.');
+    await card.getByLabel('Meseci').fill('1');
+    await card.getByRole('button', { name: 'Evidentiraj uplatu' }).click();
+    await expect(trainerPage.getByText('Uplata evidentirana')).toBeVisible();
+    await expect(card).toContainText('Članarina je aktivna');
+    const saved = (await rest(`membership_payments?client_id=eq.${client.id}&select=amount_rsd,months,period_end`, { token: trainer.token })).rows;
+    expect(saved).toEqual([{ amount_rsd: 2500, months: 1, period_end: extendPaidUntil(null, today, 1) }]);
+
+    // Klijent: aktivna članarina, QR kod i poruka treneru.
+    await page.goto('/#/clanarina');
+    await expect(page.locator('.membership')).toContainText('Članarina je aktivna');
+    await expect(page.getByRole('img', { name: 'IPS QR kod za uplatu članarine' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Uplata' })).toContainText('160-0000000123456-');
+    await expect(page.getByRole('region', { name: 'Uplate' })).toContainText('2.500 RSD');
+    await page.getByRole('button', { name: 'Uplata je poslata' }).click();
+    await expect(page.getByRole('button', { name: 'Poruka poslata' })).toBeDisabled();
+    const messages = (await rest(`messages?client_id=eq.${client.id}&select=body`, { token: client.token })).rows;
+    expect(messages.map((m) => m.body)).toEqual(['Uplata članarine je poslata: 2.500 RSD (Članarina E2E Klijent).']);
+
+    // Poništavanje pogrešne uplate.
+    await card.getByRole('button', { name: 'Poništi poslednju uplatu' }).click();
+    await card.getByRole('button', { name: 'Da, poništi' }).click();
+    await expect(trainerPage.getByText('Uplata poništena')).toBeVisible();
+    await expect(card).toContainText('Nema evidentiranih uplata');
+    await trainerContext.close();
+  });
+
+  test('posle isteka još 5 dana pristupa uz traku, a zatim su treninzi i ishrana zaključani', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+    expect((await pay(client.id, addDays(today, -3))).status).toBe(201); // istekla pre 3 dana
+
+    await loginUi(page, ACCOUNT_A);
+    const banner = page.getByRole('button', { name: /Članarina je istekla/ });
+    await expect(banner).toContainText('pristup još 2 dana');
+    await page.getByRole('link', { name: 'Treninzi' }).click();
+    await expect(page.getByRole('heading', { name: 'Članarina je istekla' })).toHaveCount(0);
+
+    // Šesti dan posle isteka: zaključano (nova uplata sa ranijim krajem zamenjuje staru).
+    await rest(`membership_payments?client_id=eq.${client.id}`, { token: trainer.token, method: 'PATCH', body: { period_end: addDays(today, -6) } });
+    await page.getByRole('link', { name: 'Početna' }).click(); // promena ekrana osvežava članarinu
+    await page.getByRole('link', { name: 'Treninzi' }).click();
+    await expect(page.getByRole('heading', { name: 'Članarina je istekla' })).toBeVisible();
+    await page.getByRole('link', { name: 'Ishrana' }).click();
+    await expect(page.getByRole('heading', { name: 'Članarina je istekla' })).toBeVisible();
+    // Napredak i poruke i dalje rade.
+    await page.getByRole('link', { name: 'Napredak' }).click();
+    await expect(page.getByRole('heading', { name: 'Napredak' })).toBeVisible();
+    await page.getByRole('link', { name: 'Aki', exact: true }).click();
+    await expect(page.getByLabel('Poruka')).toBeVisible();
+
+    // Trener u listi klijenata vidi oznaku.
+    await rest(`membership_payments?client_id=eq.${client.id}`, { token: trainer.token, method: 'PATCH', body: { period_end: addDays(today, 2) } });
+    await page.getByRole('link', { name: 'Početna' }).click();
+    await page.getByRole('link', { name: 'Treninzi' }).click();
+    await expect(page.getByRole('heading', { name: 'Članarina je istekla' })).toHaveCount(0); // posle uplate opet otključano
+  });
+
+  test('trener: oznaka u listi klijenata i podaci za uplatu sa proverom računa', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest(`profiles?id=eq.${client.id}`, { token: client.token, method: 'PATCH', body: { name: 'E2E Klijent', goal: 'snaga', location: 'kuca', level: 'pocetnik', per_week: 3 } });
+    await pay(client.id, addDays(today, -10));
+
+    await resetAccount(ACCOUNT_TRAINER); // prethodni test je već prošao onboarding trenera
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto('/#/klijenti');
+    await expect(page.getByRole('button', { name: /E2E Klijent/ })).toContainText('Članarina: zaključano');
+
+    // Čuvanje je presretnuto: test ne sme da upiše lažan račun u prava podešavanja.
+    let saved = null;
+    await page.route('**/rest/v1/billing_settings*', (route) => {
+      if (route.request().method() !== 'PATCH') return route.fallback();
+      saved = route.request().postDataJSON();
+      return route.fulfill({ status: 200, json: [{ id: 1 }] });
+    });
+    await page.goto('/#/naplata');
+    await page.getByLabel('Primalac').fill('E2E Trener');
+    await page.getByLabel('Broj računa').fill(`160-123456-${ACCOUNT.slice(16) === '00' ? '01' : '00'}`);
+    await page.getByLabel('Mesečna cena (RSD)').fill('2500');
+    await page.getByRole('button', { name: 'Sačuvaj' }).click();
+    await expect(page.getByRole('alert')).toContainText('kontrolni broj se ne slaže');
+    await page.getByLabel('Broj računa').fill(`160-123456-${ACCOUNT.slice(16)}`);
+    await expect(page.getByRole('img', { name: 'IPS QR kod za proveru' })).toBeVisible();
+    await page.getByRole('button', { name: 'Sačuvaj' }).click();
+    await expect(page.getByText('Podaci za uplatu sačuvani')).toBeVisible();
+    expect(saved).toMatchObject({ payee_name: 'E2E Trener', account: ACCOUNT, price_rsd: 2500 });
   });
 });

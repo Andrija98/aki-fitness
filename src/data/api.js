@@ -480,11 +480,54 @@ export async function deleteProgressPhoto(photo) {
   unwrap(await supabase.storage.from(PHOTO_BUCKET).remove([photo.path]));
 }
 
+// ---------- Članarina ----------
+// Uplate evidentira trener; klijent ih samo čita. "Plaćeno do" = najkasniji period_end (lib/membership.js).
+
+function toPayment(r) {
+  return { id: r.id, paidOn: r.paid_on, amountRsd: r.amount_rsd, months: r.months, periodEnd: r.period_end, note: r.note };
+}
+
+// Najnovije prvo. Bez parametra: prijavljeni korisnik; trener prosleđuje id klijenta.
+export async function getMembershipPayments(forUserId) {
+  const userId = forUserId ?? await currentUserId();
+  const rows = unwrap(await supabase.from('membership_payments').select('id, paid_on, amount_rsd, months, period_end, note')
+    .eq('client_id', userId).order('period_end', { ascending: false }).order('created_at', { ascending: false }));
+  return rows.map(toPayment);
+}
+
+// payment = { paidOn, amountRsd, months, periodEnd, note } (periodEnd računa ekran preko extendPaidUntil)
+export async function addMembershipPayment(clientId, payment) {
+  unwrap(await supabase.from('membership_payments').insert({
+    client_id: clientId, paid_on: payment.paidOn, amount_rsd: payment.amountRsd, months: payment.months,
+    period_end: payment.periodEnd, note: payment.note || null,
+  }));
+}
+
+export async function deleteMembershipPayment(id) {
+  const rows = unwrap(await supabase.from('membership_payments').delete().eq('id', id).select('id'));
+  if (!rows.length) throw new Error('Uplata nije obrisana.');
+}
+
+// Podaci za uplatu (jedan red). Prazna polja dok ih trener ne unese.
+export async function getBillingSettings() {
+  const row = unwrap(await supabase.from('billing_settings').select('payee_name, account, price_rsd').eq('id', 1).maybeSingle());
+  return { payeeName: row?.payee_name ?? '', account: row?.account ?? '', priceRsd: row?.price_rsd ?? null };
+}
+
+export async function saveBillingSettings({ payeeName, account, priceRsd }) {
+  const rows = unwrap(await supabase.from('billing_settings')
+    .update({ payee_name: payeeName || null, account: account || null, price_rsd: priceRsd, updated_at: new Date().toISOString() })
+    .eq('id', 1).select('id'));
+  if (!rows.length) throw new Error('Podaci za uplatu nisu sačuvani.');
+}
+
 // ---------- Trener: klijenti ----------
 
 // Samo klijenti koji su završili onboarding. Prvi su oni koji najduže nisu trenirali.
 export async function getClients() {
-  const rows = unwrap(await supabase.from('profiles').select('id, name, goal, sessions(date)').eq('role', 'client').not('goal', 'is', null));
+  const rows = unwrap(await supabase.from('profiles')
+    .select('id, name, goal, sessions(date), membership_payments!membership_payments_client_id_fkey(period_end)')
+    .eq('role', 'client').not('goal', 'is', null));
   return rows
     .map((r) => ({
       id: r.id,
@@ -492,6 +535,7 @@ export async function getClients() {
       goal: r.goal,
       sessionCount: r.sessions.length,
       lastSessionAt: r.sessions.map((s) => s.date).sort().at(-1) ?? null,
+      paidUntil: r.membership_payments.map((p) => p.period_end).sort().at(-1) ?? null,
     }))
     .sort((a, b) => (a.lastSessionAt ?? '').localeCompare(b.lastSessionAt ?? ''));
 }

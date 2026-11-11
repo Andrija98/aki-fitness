@@ -213,7 +213,23 @@ neprovereno). Struktura obroka: pet obroka sa udelom kalorija (zbir 100 %) i gru
 Uloga se postavlja ručno u bazi (`profiles.role = 'trainer'`). Trenerske stavke su u Profilu: Klijenti, Namirnice,
 Struktura obroka, Uređivanje programa, Uređivanje treninga, Vežbe. Tab Poruke kod trenera je sanduče sa svim razgovorima.
 
-### 5.8 Rad bez interneta
+### 5.8 Članarina (prvi korak: ručna evidencija + IPS QR)
+- **Uplate** (`membership_payments`) evidentira trener u profilu klijenta; klijent ih samo čita (RLS), pa ne može sam sebi
+  da produži članarinu. "Plaćeno do" je najkasniji `period_end`. Produženje (`extendPaidUntil` u `lib/membership.js`) se
+  nastavlja na važeću članarinu, a posle isteka kreće od **dana uplate**, pa ni klijentovo ni trenerovo kašnjenje ne kraći mesec.
+- **Stanja** (`membershipStatus`): bez uplata → bez ograničenja (postojeći nalozi); aktivna; ističe uskoro (5 dana pre);
+  istekla, ali još 5 dana pristupa (`GRACE_DAYS`); zaključano. "Plaćeno do 10." = pristup zaključno sa 15., zaključava se 16.
+- **Zaključavanje je u aplikaciji** (`App.jsx`): Treninzi i Ishrana pokazuju `MembershipLocked`; Početna, Poruke, Napredak i
+  Profil rade. Baza ne zaključava sadržaj (programi i videi su i dalje čitljivi preko API-ja), što je poznato ograničenje.
+  Uplate se čitaju ponovo pri svakoj promeni ekrana, pa se klijent otključa čim trener evidentira uplatu.
+- **IPS QR** (`lib/ips.js`): sadržaj po NBS standardu (`K:PR|V:01|C:1|R:…|N:…|I:RSD…|SF:289|S:…`), broj računa proveren
+  kontrolnim brojem (MOD 97). Ovakav QR (uplata na račun) ne traži ugovor sa bankom. Slika se pravi u browseru bibliotekom
+  `qrcode`, koja se učitava tek na ekranu sa QR kodom. Podatke za uplatu (`billing_settings`, jedan red) unosi trener na
+  ekranu Naplata; čitaju ih svi prijavljeni.
+- "Uplata je poslata" šalje poruku treneru; članarina se produžava tek kad trener vidi novac i evidentira uplatu.
+- Pravno: za stalnu naplatu treba registrovana delatnost (npr. paušalac) i provera obaveze fiskalnog računa kod knjigovođe.
+
+### 5.9 Rad bez interneta
 `public/sw.js` (samo u produkciji): network-first. Fajlovi aplikacije se čuvaju u kešu, pa se aplikacija otvara i bez mreže.
 Zahtevi ka Supabase-u, YouTube-u i fontovima idu direktno (ne kešira ih). Kad podaci ne mogu da se učitaju, ekran "Nema veze".
 Za brisanje starog keša na svim telefonima povećaj `VERSION` u `sw.js`.
@@ -225,7 +241,7 @@ Za brisanje starog keša na svim telefonima povećaj `VERSION` u `sw.js`.
 SQL fajlovi u `docs/`, pokreću se ručno u Supabase SQL Editoru, **ovim redom**:
 `supabase-schema.sql`, `-seed`, `-measurements`, `-messages`, `-nutrition-targets`, `-foods`, `-foods-seed`,
 `-food-preferences`, `-meal-plans`, `-privacy`, `-progress-photos`, `-message-photos`, `-workout-item-details`,
-`-hardening` (poslednji). Sadržaj programa (vežbe, treninzi, program) dolazi posle šeme, npr.
+`-memberships`, `-hardening` (poslednji). Sadržaj programa (vežbe, treninzi, program) dolazi posle šeme, npr.
 `supabase-program-kucni-muskarci.sql`; ti fajlovi su bezbedni za ponovno pokretanje (`on conflict do nothing`).
 
 Svaki fajl na vrhu ima komentar šta dodaje i zašto. Ako je fajl već pokrenut, a kasnije je ispravljen, ispravka za
@@ -243,6 +259,8 @@ postojeću bazu se daje posebno (glavni fajl ostaje ispravan za novu instalaciju
 | `meal_plans`, `meal_plan_items` | sačuvan plan | klijent dok nije zaključan; trener zaključava i menja grame |
 | `meal_checks` | pojedeni obroci (snimak) | klijent svoje, ne za budućnost; trener čita |
 | `progress_photos` | red za fotografiju napretka | klijent svoje; trener čita |
+| `membership_payments` | uplate članarine | klijent čita svoje; trener piše |
+| `billing_settings` | primalac, račun, cena (jedan red) | svi prijavljeni čitaju; trener menja |
 
 ---
 
@@ -289,6 +307,9 @@ traži nešto što ne postoji i korisnici dobijaju "Nema veze".
 ---
 
 ## 10. Poznata ograničenja
+
+- Članarina se zaključava samo u aplikaciji; tehnički potkovan klijent može da pročita sadržaj preko API-ja. Uplate se
+  evidentiraju ručno (nema automatske naplate karticom).
 
 - Supabase-ov ugrađeni servis za slanje mejlova ima mali limit (reset lozinke); treba domen + Resend.
 - Izuzeci za testove (`e2e_clear_messages`, brisanje priloga) prepoznaju e2e nalog po mejlu `e2e-…`. Korisnik koji bi

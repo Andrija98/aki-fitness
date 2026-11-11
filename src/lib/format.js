@@ -14,6 +14,11 @@ export function formatShortDate(d) {
   return date.toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'short' });
 }
 
+// Pun datum, npr. "10. decembar 2026." (članarina). Prima "YYYY-MM-DD".
+export function formatDate(iso) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 // "Danas", "Juče" ili kratak datum, za razdvajanje poruka po danima.
 export function formatDayLabel(d) {
   const key = dateKey(d);

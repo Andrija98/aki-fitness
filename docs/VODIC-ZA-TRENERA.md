@@ -114,7 +114,27 @@ Na kartici plana vidiš "Ove nedelje pojedeno X od Y obroka (do danas)". To je d
 
 ---
 
-## 6. Poruke
+## 6. Članarina
+
+**Profil → Naplata:** upiši ime primaoca (kako piše u banci), broj računa i mesečnu cenu. Aplikacija proverava kontrolni
+broj računa i pokazuje QR kod: skeniraj ga svojom aplikacijom banke (bez plaćanja) i proveri podatke. Kad registruješ
+delatnost, ovde samo promeniš broj računa.
+
+**Kako klijent plaća:** u Profilu → Članarina vidi cenu i QR kod, plati iz svoje aplikacije banke i pritisne
+"Uplata je poslata": tebi stiže poruka.
+
+**Ti evidentiraš uplatu** (profil klijenta → Članarina) kad novac vidiš na računu: iznos, broj meseci i **datum uplate**.
+Aplikacija pokazuje "Novo plaćeno do". Pogrešno unetu uplatu poništiš dugmetom "Poništi poslednju uplatu".
+
+**Pravila:**
+- Klijent bez ijedne evidentirane uplate ima pristup bez ograničenja (zato postojeći nalozi ne gube ništa).
+- 5 dana pre isteka klijent vidi upozorenje na Početnoj.
+- Posle isteka ima još **5 dana** punog pristupa; zatim su Treninzi i Ishrana zaključani, a Poruke, Napredak i Profil rade.
+- U listi klijenata vidiš oznake "ističe za…", "istekla" i "zaključano", da znaš kome da se javiš.
+
+**Pre prvog pravog klijenta koji plaća:** registracija delatnosti (npr. paušalac) i razgovor sa knjigovođom o fiskalnom računu.
+
+## 7. Poruke
 
 Tab **Poruke** je tvoje sanduče: svi klijenti, prvo oni sa nepročitanim porukama. Poruke stižu odmah, bez osvežavanja,
 a broj nepročitanih je na tabu.
@@ -122,7 +142,7 @@ a broj nepročitanih je na tabu.
 Ti i klijent možete da pošaljete i **fotografiju** (dugme sa slikom pored polja za poruku), npr. obrok ili tehniku vežbe.
 Tekst iz polja ide uz fotografiju kao natpis. Poslate poruke i fotografije se ne brišu i ne menjaju.
 
-## 7. Fotografije napretka
+## 8. Fotografije napretka
 
 Klijent u Napretku dodaje svoje fotografije (najbolje jednom mesečno, isto svetlo i poza). Ti ih vidiš u profilu klijenta,
 a dugme **Uporedi** stavlja dve fotografije jednu pored druge ("pre i posle"). Fotografije su privatne: vidite ih samo
@@ -130,7 +150,7 @@ ti i klijent, a brisati ih može samo klijent.
 
 ---
 
-## 8. Privatnost: šta treba da znaš
+## 9. Privatnost: šta treba da znaš
 
 - Aplikacija čuva podatke o zdravlju klijenata (težina, mere, fotografije, ishrana). Klijent pre korišćenja daje
   **izričit pristanak**; politiku privatnosti svako može da pročita na Login ekranu i u Profilu.
@@ -140,7 +160,7 @@ ti i klijent, a brisati ih može samo klijent.
 
 ---
 
-## 9. Česta pitanja
+## 10. Česta pitanja
 
 **Klijent kaže da ne vidi plan ishrane.**
 Proveri da li ima proverenih namirnica (Profil → Namirnice, broj "X od Y aktivnih je provereno") i da li je klijent
