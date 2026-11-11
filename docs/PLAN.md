@@ -20,7 +20,7 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 4. Prebaciti demo sadržaj u bazu (`docs/supabase-seed.sql`)
 5. Prepisati funkcije u `src/data/api.js` na Supabase pozive
 6. Ekran **Napredak**: grafikon težine, mere, istorija treninga
-7. Trenerov pravi sadržaj: YouTube (unlisted) linkovi za svaku vežbu
+7. Trenerov pravi sadržaj: video za svaku vežbu, Bunny Stream (preporuka) ili YouTube (unlisted)
 
 ## Faza 3 — Trener i komunikacija (u toku)
 1. ✅ **Trener panel**: lista klijenata i njihov napredak, vežbe sa videom, treninzi i programi
@@ -35,6 +35,7 @@ Cilj: klijent se prijavi, podaci su na serveru, trener vidi ko trenira.
 - Korak 2 (kad bude dovoljno klijenata): kartična naplata sa automatskim mesečnim plaćanjem (AllSecure ili Monri,
   ugovor sa bankom), zaključavanje i u bazi.
 - Pre naplate pravim klijentima: registrovana delatnost (npr. paušalac) i provera fiskalnog računa kod knjigovođe.
+- Video samo za aktivnu članarinu: potpisani Bunny linkovi preko Supabase Edge Function (ključ ne sme u aplikaciju).
 - Pravna strana: ✅ politika privatnosti i pristanak (nacrt, pre pravih klijenata da pogleda pravnik); uslovi korišćenja, fiskalizacija.
 - Pre pravih klijenata: sopstveni domen i slanje mejlova (Resend) za reset lozinke.
 

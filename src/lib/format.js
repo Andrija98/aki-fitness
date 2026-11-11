@@ -98,8 +98,4 @@ export function formatDaysAgo(d) {
   return `pre ${days} ${days % 10 === 1 && days % 100 !== 11 ? 'dan' : 'dana'}`;
 }
 
-export function youtubeId(url) {
-  if (!url) return null;
-  const m = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
-  return m ? m[1] : null;
-}
+// YouTube i Bunny linkovi: src/lib/video.js

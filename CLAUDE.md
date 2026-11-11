@@ -27,7 +27,8 @@ src/
   lib/useAuth.js      hook za sesiju: undefined = proverava, null = odjavljen
   lib/router.js       mali hash router: useRoute(), navigate('program', id), href(), back()
   lib/useData.js      hook za async učitavanje: const { data, reload } = useData(() => api(), [deps])
-  lib/format.js       datumi, brojevi, nedelja, streak, YouTube ID
+  lib/format.js       datumi, brojevi, nedelja, streak
+  lib/video.js        video linkovi: YouTube i Bunny Stream (prepoznavanje, oblik za čuvanje, plejer; e2e/video.spec.js)
   lib/nutrition.js    kalkulator dnevnog cilja, grupe namirnica, obroci (čiste funkcije, testovi u e2e/nutrition.spec.js)
   lib/mealPlan.js     generator plana ishrane i otisak ulaza (čista funkcija, testovi u e2e/mealplan.spec.js)
   lib/image.js        smanjivanje fotografije pre slanja (canvas, JPEG)

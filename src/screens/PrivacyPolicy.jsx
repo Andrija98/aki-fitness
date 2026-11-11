@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
           <li><strong>Supabase</strong>: baza podataka, skladište fotografija i prijava. Podaci se čuvaju u Evropskoj uniji (Irska).</li>
           <li><strong>Netlify</strong>: isporučuje samu aplikaciju. Ne čuva podatke koje uneseš, ali kao svaki server vidi tehničke podatke zahteva (npr. IP adresu).</li>
           <li><strong>Google Fonts</strong>: slova koja aplikacija koristi; Google pri učitavanju vidi tvoju IP adresu.</li>
-          <li><strong>YouTube</strong>: video snimci vežbi, u režimu bez kolačića za praćenje. Kad pokreneš video, YouTube (Google) dobija tehničke podatke o pregledu.</li>
+          <li><strong>Bunny Stream</strong> (BunnyWay, Slovenija, EU) i <strong>YouTube</strong> (u režimu bez kolačića za praćenje): video snimci vežbi. Kad pokreneš video, pružalac dobija tehničke podatke o pregledu (npr. IP adresu), ali ne i podatke iz aplikacije.</li>
         </ul>
       </Section>
 

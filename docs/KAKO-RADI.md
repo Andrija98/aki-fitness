@@ -133,8 +133,11 @@ Ime → cilj i mesto → nivo i učestalost → težina. Posle čuvanja aplikaci
 Isti ekran služi za izmenu ciljeva (`#/ciljevi`).
 
 ### 5.3 Treninzi
-Program ima raspored treninga (`program_schedule`), trening ima vežbe (`workout_items`), vežba ima YouTube video
-(unlisted link, prikaz preko `youtube-nocookie.com`). Klijent je upisan u jedan aktivni program (`enrollments`).
+Program ima raspored treninga (`program_schedule`), trening ima vežbe (`workout_items`), vežba ima video: **Bunny Stream**
+(`iframe.mediadelivery.net/embed/{biblioteka}/{video}`) ili YouTube (unlisted, prikaz preko `youtube-nocookie.com`).
+`lib/video.js` prepoznaje oba linka i čuva ih u jednom obliku; Bunny plejer ne pušta i ne učitava video dok klijent ne pritisne
+Play (štedi mobilni internet). Bunny biblioteka ima "Allowed Domains" (samo adresa aplikacije), što sprečava ugrađivanje na
+drugim sajtovima, ali nije potpuna zaštita: potpisani linkovi samo za aktivnu članarinu su sledeći korak (traže serversku funkciju). Klijent je upisan u jedan aktivni program (`enrollments`).
 Stavka treninga ima serije, ponavljanja (ili sekunde), opcioni **raspon** (`reps_max`, prikaz "4 serije × 10–12 ponavljanja"),
 pauzu i **napomenu samo za taj trening** (`note`: "10 po nozi", "opcija 2: bench press", superset). Napomena je uz stavku, a ne
 u savetu vežbe, jer je savet zajednički za sve programe. Ista vežba ne sme dvaput u istom treningu (sesija broji serije po vežbi),
@@ -235,7 +238,7 @@ Struktura obroka, Uređivanje programa, Uređivanje treninga, Vežbe. Tab Poruke
 
 ### 5.9 Rad bez interneta
 `public/sw.js` (samo u produkciji): network-first. Fajlovi aplikacije se čuvaju u kešu, pa se aplikacija otvara i bez mreže.
-Zahtevi ka Supabase-u, YouTube-u i fontovima idu direktno (ne kešira ih). Kad podaci ne mogu da se učitaju, ekran "Nema veze".
+Zahtevi ka Supabase-u, Bunny-ju, YouTube-u i fontovima idu direktno (ne kešira ih). Kad podaci ne mogu da se učitaju, ekran "Nema veze".
 Za brisanje starog keša na svim telefonima povećaj `VERSION` u `sw.js`.
 
 ---

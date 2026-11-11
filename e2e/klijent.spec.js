@@ -9,6 +9,7 @@ import { PRIVACY_CONTROLLER, PRIVACY_EMAIL, PRIVACY_VERSION } from '../src/confi
 import { addDays, extendPaidUntil } from '../src/lib/membership.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
+const BUNNY_GUID = '7a9b2c4d-1e2f-4a3b-9c8d-0123456789ab';
 
 test.describe('bez naloga', () => {
   test('neprijavljen korisnik vidi samo login, i na direktnoj adresi', async ({ page }) => {
@@ -1063,15 +1064,40 @@ test.describe('trener: video snimci', () => {
     await expect(page.getByRole('heading', { name: 'Vežbe' })).toBeVisible();
     await expect(page.getByText(/od \d+ vežbi ima video/)).toBeVisible();
 
-    await page.getByLabel('YouTube link za Bench press').fill('nije link');
+    await page.getByLabel('Link videa za Bench press').fill('nije link');
     await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
-    await expect(page.getByRole('alert')).toHaveText('To nije ispravan YouTube link.');
+    await expect(page.getByRole('alert')).toHaveText('To nije ispravan YouTube ili Bunny link.');
     expect(saved).toBeNull();
 
-    await page.getByLabel('YouTube link za Bench press').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s');
+    await page.getByLabel('Link videa za Bench press').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s');
     await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
     await expect(page.getByText('Video sačuvan')).toBeVisible();
     expect(saved).toEqual({ video_url: 'https://youtu.be/dQw4w9WgXcQ' });
+
+    // Bunny Stream link (play oblik) se čuva kao embed link.
+    await page.getByLabel('Link videa za Bench press').fill(`https://iframe.mediadelivery.net/play/123456/${BUNNY_GUID}`);
+    await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
+    await expect.poll(() => saved?.video_url).toBe(`https://iframe.mediadelivery.net/embed/123456/${BUNNY_GUID}`);
+  });
+
+  test('trening pušta Bunny Stream video', async ({ page }) => {
+    // Odgovor baze se menja u letu: prva vežba dobija Bunny link (pravi sadržaj se ne dira).
+    await page.route('**/rest/v1/workouts*', async (route) => {
+      const response = await route.fetch();
+      const json = await response.json();
+      // maybeSingle() dobija niz i sam bira prvi red, pa se podržavaju oba oblika.
+      for (const workout of Array.isArray(json) ? json : [json]) {
+        const item = (workout?.workout_items ?? []).find((it) => it.position === 1);
+        if (item) item.exercises.video_url = `https://iframe.mediadelivery.net/embed/123456/${BUNNY_GUID}`;
+      }
+      await route.fulfill({ response, json });
+    });
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/trening/${LAGANO}/${GORNJI}`);
+    await expect(page.locator('.video-area iframe')).toHaveAttribute('src',
+      `https://iframe.mediadelivery.net/embed/123456/${BUNNY_GUID}?autoplay=false&preload=false&responsive=true`);
   });
 });
 

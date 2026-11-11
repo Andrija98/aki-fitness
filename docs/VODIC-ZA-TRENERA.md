@@ -9,7 +9,7 @@ Sve trenerske stvari su u **Profilu** (krug sa tvojim inicijalom gore desno na P
 
 1. **Proveri namirnice** (Profil → Namirnice). Bez proverenih namirnica klijenti ne dobijaju plan ishrane. Vidi poglavlje 5.
 2. **Pogledaj strukturu obroka** (Profil → Struktura obroka). Podrazumevano je pet obroka; prilagodi ako radiš drugačije.
-3. **Proveri vežbe i video snimke** (Profil → Vežbe). Svaka vežba treba da ima tvoj YouTube snimak.
+3. **Proveri vežbe i video snimke** (Profil → Vežbe). Svaka vežba treba da ima tvoj snimak (Bunny Stream ili YouTube).
 4. **Objavi programe** koje klijenti treba da vide (Profil → Uređivanje programa).
 
 Nalog za novog klijenta za sada otvara Andrija. Klijent pri prvoj prijavi daje pristanak na obradu podataka,
@@ -21,8 +21,12 @@ pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predl
 
 **Profil → Vežbe**
 - Svaka vežba ima naziv, kratak savet za izvođenje i video.
-- Video: postavi snimak na YouTube kao **Unlisted** (ne javni, ali ko ima link može da ga gleda), kopiraj link i nalepi ga
-  kod vežbe. Aplikacija prihvata obične YouTube linkove i one sa `youtu.be`.
+- **Video preko Bunny Stream-a (preporuka):** na bunny.net → Stream → tvoja Video Library postaviš snimak prevlačenjem
+  sa računara i sačekaš obradu. Otvoriš snimak → Embed (ili Share), kopiraš link (`iframe.mediadelivery.net/...`) i
+  nalepiš ga kod vežbe. Jednom podesi **Library → Security → Allowed Domains**: `aki-fitness.netlify.app` (i `localhost`
+  ako probaš na računaru), da snimci ne rade na tuđim sajtovima. Bez reklama i tuđih preporuka; košta oko 1 $ mesečno.
+- **Video preko YouTube-a:** snimak kao **Unlisted** (ne javni, ali ko ima link može da ga gleda), pa link kod vežbe.
+- Možeš da kombinuješ: neke vežbe na Bunny-ju, neke na YouTube-u. Kod Bunny snimka umesto sličice piše "Bunny video".
 - **Brisanje** (Izmeni → Obriši vežbu): briše se samo vežba koja nije ni u jednom treningu i koju niko nije radio.
   Ako je u treningu, prvo je ukloni iz treninga. Ako su je klijenti radili, ostaje zbog njihove istorije; pogrešan
   naziv samo izmeni.

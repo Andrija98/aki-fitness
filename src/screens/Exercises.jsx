@@ -1,4 +1,4 @@
-// Trener: vežbe. Nova vežba, izmena naziva i saveta, YouTube link, brisanje neupotrebljene vežbe. Upis štiti RLS u bazi.
+// Trener: vežbe. Nova vežba, izmena naziva i saveta, video (YouTube ili Bunny Stream), brisanje neupotrebljene vežbe. Upis štiti RLS u bazi.
 // Upotrebljena vežba se ne briše: na nju su vezani treninzi i serije iz odrađenih treninga.
 
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { useData } from '../lib/useData.js';
 import { back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
 import { createExercise, deleteExercise, getExerciseUsage, getExercises, setExerciseVideo, updateExercise } from '../data/api.js';
-import { youtubeId } from '../lib/format.js';
+import { canonicalVideoUrl, parseVideo } from '../lib/video.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
 import DeleteControl from '../components/DeleteControl.jsx';
@@ -103,7 +103,7 @@ function ExerciseRow({ exercise, names, onSaved }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const { id, name, cue, videoUrl } = exercise;
-  const savedVideoId = youtubeId(videoUrl);
+  const savedVideo = parseVideo(videoUrl);
 
   async function persistVideo(next, message) {
     setBusy(true);
@@ -123,9 +123,9 @@ function ExerciseRow({ exercise, names, onSaved }) {
   function saveVideo(e) {
     e.preventDefault();
     if (busy) return;
-    const videoId = youtubeId(url.trim());
-    if (!videoId) return setError('To nije ispravan YouTube link.');
-    persistVideo(`https://youtu.be/${videoId}`, 'Video sačuvan');
+    const video = parseVideo(url);
+    if (!video) return setError('To nije ispravan YouTube ili Bunny link.');
+    persistVideo(canonicalVideoUrl(video), 'Video sačuvan');
   }
 
   async function saveDetails(values) {
@@ -161,10 +161,12 @@ function ExerciseRow({ exercise, names, onSaved }) {
         </div>
       )}
 
-      {savedVideoId && <img className="video-thumb" src={`https://img.youtube.com/vi/${savedVideoId}/mqdefault.jpg`} alt={`Sličica videa za vežbu ${name}`} />}
+      {savedVideo?.provider === 'youtube' && <img className="video-thumb" src={`https://img.youtube.com/vi/${savedVideo.id}/mqdefault.jpg`} alt={`Sličica videa za vežbu ${name}`} />}
+      {/* Bunny sličica traži adresu CDN-a biblioteke, koje nema u linku, pa samo oznaka. */}
+      {savedVideo?.provider === 'bunny' && <span className="tag tag-neutral" style={{ alignSelf: 'flex-start' }}>Bunny video</span>}
       <form className="row" style={{ gap: 8 }} onSubmit={saveVideo}>
         <input className="text-input" style={{ background: 'var(--color-neutral-100)' }} inputMode="url" autoCapitalize="none" autoCorrect="off" value={url}
-          onChange={(e) => setUrl(e.target.value)} placeholder="YouTube link" aria-label={`YouTube link za ${name}`} />
+          onChange={(e) => setUrl(e.target.value)} placeholder="YouTube ili Bunny link" aria-label={`Link videa za ${name}`} />
         <button className="round-btn round-btn--accent" style={{ width: 56, height: 56 }} disabled={busy} aria-label={`Sačuvaj video za ${name}`}><Icon name="check" /></button>
       </form>
       {error && <p className="login-error" role="alert">{error}</p>}

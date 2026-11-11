@@ -1,4 +1,4 @@
-import { youtubeId } from '../lib/format.js';
+import { parseVideo, playerUrl } from '../lib/video.js';
 
 // Prugasto polje iz dizajna: stoji umesto slike ili videa dok ih trener ne doda.
 // tone: 'accent' | 'sage' | 'neutral' | 'dark'
@@ -12,15 +12,15 @@ export function Striped({ tone = 'accent', label, className = '', style, childre
   );
 }
 
-// YouTube video ako postoji link, inače placeholder sa natpisom.
+// Video (YouTube ili Bunny Stream) ako postoji link, inače placeholder sa natpisom.
 export function VideoPlayer({ url, label }) {
-  const id = youtubeId(url);
-  if (id) {
+  const video = parseVideo(url);
+  if (video) {
     return (
       <iframe
-        src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1`}
+        src={playerUrl(video)}
         title={label}
-        allow="autoplay; encrypted-media; picture-in-picture"
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
         allowFullScreen
       />
     );
