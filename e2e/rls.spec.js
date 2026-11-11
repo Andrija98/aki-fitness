@@ -462,6 +462,13 @@ test('klijent ne može da menja raspored programa', async () => {
   expect(removed.rows).toEqual([]);
 });
 
+test('klijent ne može da briše vežbe, treninge ni programe', async () => {
+  expect((await rest(`exercises?id=eq.${SKLEKOVI}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
+  expect((await rest(`workouts?id=eq.${GORNJI}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
+  expect((await rest(`programs?id=eq.${LAGANO}`, { token: b.token, method: 'DELETE' })).rows).toEqual([]);
+  expect((await rest(`programs?id=eq.${LAGANO}&select=id`, { token: b.token })).rows).toHaveLength(1); // i dalje postoji
+});
+
 test('klijent ne može da menja sadržaj trenera', async () => {
   const created = await rest('programs', { token: b.token, method: 'POST', body: { title: 'hak', weeks: 1, per_week: 1 } });
   expect(created.status).toBe(DENIED);

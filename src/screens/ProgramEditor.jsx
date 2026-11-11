@@ -5,9 +5,10 @@ import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { back, navigate } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
-import { getProgram, getProgramClientCount, getWorkoutsOverview, saveProgram } from '../data/api.js';
+import { deleteProgram, getProgram, getProgramClientCount, getProgramDeleteUsage, getWorkoutsOverview, saveProgram } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import DeleteControl from '../components/DeleteControl.jsx';
 
 const LOCATIONS = [['kuca', 'Kod kuće'], ['teretana', 'Teretana']];
 const LEVELS = ['Početnik', 'Srednji', 'Napredni', 'Svi nivoi'];
@@ -189,6 +190,18 @@ function Editor({ workouts, program, clientCount, isNew }) {
 
       {error && <p className="login-error" role="alert">{error}</p>}
       <button className="pill-btn pill-btn--accent" disabled={busy}>{busy ? 'Čuvam…' : 'Sačuvaj program'}</button>
+      {!isNew && (
+        <DeleteControl label="Obriši program"
+          checkUsage={async () => {
+            const { enrollments, sessions } = await getProgramDeleteUsage(program.id);
+            const reasons = [];
+            if (enrollments) reasons.push(`Izabrali su ga klijenti (broj: ${enrollments}).`);
+            if (sessions) reasons.push(`Klijenti su po njemu trenirali (broj treninga: ${sessions}).`);
+            if (reasons.length) reasons.push('Umesto brisanja isključi „Objavljen“ i sačuvaj: klijenti ga više neće videti, a njihova istorija ostaje.');
+            return reasons;
+          }}
+          onDelete={async () => { await deleteProgram(program.id); toast('Program obrisan'); navigate('trener-programi'); }} />
+      )}
     </form>
   );
 }

@@ -287,6 +287,51 @@ test.describe('trener: treninzi', () => {
     await expect(page.locator('.item-note')).toHaveText('Opcija 2: sklek');
   });
 
+  test('brisanje: neupotrebljen trening i vežba se brišu, upotrebljeni pokazuju razlog', async ({ page }) => {
+    await resetAccount(ACCOUNT_TRAINER);
+    const removeTestExercises = () => rest('exercises?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+    await removeTestExercises();
+    const [workout] = (await rest('workouts', { token: trainer.token, method: 'POST', body: { title: 'E2E Za brisanje' } })).rows;
+    await rest('exercises', { token: trainer.token, method: 'POST', body: { name: 'E2E Vežba za brisanje' } });
+    try {
+      await loginUi(page, ACCOUNT_TRAINER);
+      await finishOnboarding(page);
+
+      // Upotrebljen trening (Gornji deo tela je u dva programa): razlog, bez potvrde.
+      await page.goto(`/#/trener-trening/${GORNJI}`);
+      await page.getByRole('button', { name: 'Obriši trening' }).click();
+      await expect(page.getByRole('note').filter({ hasText: 'Ne može da se obriše' })).toContainText('Nalazi se u programima (2)');
+      await expect(page.getByRole('button', { name: 'Da, obriši' })).toHaveCount(0);
+
+      // Neupotrebljen trening: potvrda, pa brisanje.
+      await page.goto(`/#/trener-trening/${workout.id}`);
+      await page.getByRole('button', { name: 'Obriši trening' }).click();
+      await page.getByRole('button', { name: 'Ne', exact: true }).click(); // predomislio se
+      await expect(page.getByRole('button', { name: 'Da, obriši' })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Obriši trening' }).click();
+      await page.getByRole('button', { name: 'Da, obriši' }).click();
+      await expect(page.getByText('Trening obrisan')).toBeVisible();
+      await expect(page).toHaveURL(/#\/trener-treninzi$/);
+      expect((await rest(`workouts?id=eq.${workout.id}&select=id`, { token: trainer.token })).rows).toEqual([]);
+
+      // Vežbe: upotrebljena (Sklekovi) pokazuje razlog, nova se briše.
+      await page.goto('/#/vezbe');
+      await page.getByRole('button', { name: 'Izmeni vežbu Sklekovi' }).click();
+      await page.getByRole('button', { name: 'Obriši vežbu' }).click();
+      await expect(page.getByRole('note').filter({ hasText: 'Ne može da se obriše' })).toContainText('Nalazi se u treninzima');
+      await page.getByRole('button', { name: 'Odustani' }).click();
+
+      await page.getByRole('button', { name: 'Izmeni vežbu E2E Vežba za brisanje' }).click();
+      await page.getByRole('button', { name: 'Obriši vežbu' }).click();
+      await page.getByRole('button', { name: 'Da, obriši' }).click();
+      await expect(page.getByText('Vežba obrisana')).toBeVisible();
+      await expect(page.getByText('E2E Vežba za brisanje')).toHaveCount(0);
+      expect((await rest('exercises?name=eq.E2E%20Vežba%20za%20brisanje&select=id', { token: trainer.token })).rows).toEqual([]);
+    } finally {
+      await removeTestExercises();
+    }
+  });
+
   test('pauza 0 (superset): bez ekrana pauze, odmah sledeća vežba', async ({ page }) => {
     await resetAccount(ACCOUNT_TRAINER);
     const [workout] = (await rest('workouts', { token: trainer.token, method: 'POST', body: { title: 'E2E Superset' } })).rows;
@@ -362,6 +407,36 @@ test.describe('trener: programi', () => {
     await resetAccount(ACCOUNT_A);
     await removeTestPrograms();
     await resetAccount(ACCOUNT_TRAINER);
+  });
+
+  test('brisanje programa: neupotrebljen se briše, a izabran nudi isključivanje objave', async ({ page }) => {
+    const client = await resetAccount(ACCOUNT_A);
+    await rest('enrollments', { token: client.token, method: 'POST', body: { user_id: client.id, program_id: LAGANO } }); // sigurno izabran
+    const [program] = (await rest('programs', { token: trainer.token, method: 'POST', body: {
+      title: 'E2E Za brisanje', weeks: 1, per_week: 1, location: 'kuca', level: 'Početnik', published: false,
+    } })).rows;
+    await rest('program_schedule', { token: trainer.token, method: 'POST', body: { program_id: program.id, position: 1, workout_id: KARDIO } });
+
+    await resetAccount(ACCOUNT_TRAINER);
+    await loginUi(page, ACCOUNT_TRAINER);
+    await finishOnboarding(page);
+    await page.goto(`/#/trener-program/${LAGANO}`);
+    await page.getByRole('button', { name: 'Obriši program' }).click();
+    const note = page.getByRole('note').filter({ hasText: 'Ne može da se obriše' });
+    await expect(note).toContainText('Izabrali su ga klijenti');
+    await expect(note).toContainText('isključi „Objavljen“');
+    await expect(page.getByRole('button', { name: 'Da, obriši' })).toHaveCount(0);
+
+    await page.goto(`/#/trener-program/${program.id}`);
+    await page.getByRole('button', { name: 'Obriši program' }).click();
+    await page.getByRole('button', { name: 'Da, obriši' }).click();
+    await expect(page.getByText('Program obrisan')).toBeVisible();
+    await expect(page).toHaveURL(/#\/trener-programi$/);
+    expect((await rest(`programs?id=eq.${program.id}&select=id`, { token: trainer.token })).rows).toEqual([]);
+    // Raspored je obrisan sa programom, a trening je ostao.
+    expect((await rest(`program_schedule?program_id=eq.${program.id}`, { token: trainer.token })).rows).toEqual([]);
+    expect((await rest(`workouts?id=eq.${KARDIO}&select=id`, { token: trainer.token })).rows).toHaveLength(1);
+    await resetAccount(ACCOUNT_A);
   });
 
   test('novi program: provere, raspored sa ponovljenim treningom, pa izmena bez viška pozicija', async ({ page }) => {

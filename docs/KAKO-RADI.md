@@ -142,7 +142,11 @@ pa za superset sa vežbom koja se ponavlja postoji posebna vežba (npr. "Pregib 
 Superset za sada nema poseban tok: vežbe idu jedna za drugom, a napomena objašnjava naizmenično izvođenje.
 Pauza 0 (prva vežba superseta) znači da se ekran pauze ne otvara, a kartica "Sledeće" piše "Bez pauze".
 Sesija treninga (`WorkoutSession.jsx`): vežba po vežba, cilj i napomena ispod naziva, upis ponavljanja i kilaže, pauza sa odbrojavanjem, rezime;
-na kraju se čuva `sessions` + `session_sets`. Vežbe se ne brišu, jer su odrađene serije vezane za njih.
+na kraju se čuva `sessions` + `session_sets`.
+**Brisanje** (`DeleteControl`): vežba, trening i program se brišu samo kad se nigde ne koriste (vežba: nije u treningu i
+niko je nije radio; trening: nije u programu i niko ga nije odradio; program: niko ga nije izabrao ni trenirao po njemu).
+Ekran prvo prebroji upotrebu i prikaže razlog; baza i sama odbija brisanje upotrebljenog (strani ključevi bez kaskade, kod
+23503), pa i trka završi jasnom porukom. Kaskadno se brišu samo stavke treninga i raspored programa.
 
 ### 5.4 Napredak
 Težina (grafikon), mere (struk, kukovi, ruka), istorija treninga i **fotografije napretka** (`ProgressPhotos.jsx`):

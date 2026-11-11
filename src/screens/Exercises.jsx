@@ -1,14 +1,15 @@
-// Trener: vežbe. Nova vežba, izmena naziva i saveta, YouTube link. Upis štiti RLS u bazi.
-// Vežbe se ne brišu: serije iz odrađenih treninga su vezane za njih.
+// Trener: vežbe. Nova vežba, izmena naziva i saveta, YouTube link, brisanje neupotrebljene vežbe. Upis štiti RLS u bazi.
+// Upotrebljena vežba se ne briše: na nju su vezani treninzi i serije iz odrađenih treninga.
 
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { back } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
-import { createExercise, getExercises, setExerciseVideo, updateExercise } from '../data/api.js';
+import { createExercise, deleteExercise, getExerciseUsage, getExercises, setExerciseVideo, updateExercise } from '../data/api.js';
 import { youtubeId } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import DeleteControl from '../components/DeleteControl.jsx';
 
 const SAVE_ERROR = 'Nije sačuvano. Proveri internet i pokušaj ponovo.';
 
@@ -134,10 +135,22 @@ function ExerciseRow({ exercise, names, onSaved }) {
     onSaved();
   }
 
+  async function exerciseBlockers() {
+    const { workouts, sets } = await getExerciseUsage(id);
+    const reasons = [];
+    if (workouts) reasons.push(`Nalazi se u treninzima (${workouts}). Prvo je ukloni iz njih u Uređivanju treninga.`);
+    if (sets) reasons.push(`Klijenti su je radili (broj serija: ${sets}), pa ostaje zbog istorije. Ako je naziv pogrešan, izmeni ga.`);
+    return reasons;
+  }
+
   return (
     <div className="surface col" style={{ gap: 10 }}>
       {editing ? (
-        <ExerciseForm idPrefix={id} initial={exercise} names={names} submitLabel="Sačuvaj izmene" onSubmit={saveDetails} onCancel={() => setEditing(false)} />
+        <>
+          <ExerciseForm idPrefix={id} initial={exercise} names={names} submitLabel="Sačuvaj izmene" onSubmit={saveDetails} onCancel={() => setEditing(false)} />
+          <DeleteControl label="Obriši vežbu" checkUsage={exerciseBlockers}
+            onDelete={async () => { await deleteExercise(id); toast('Vežba obrisana'); onSaved(); }} />
+        </>
       ) : (
         <div className="row between" style={{ alignItems: 'flex-start' }}>
           <span className="col" style={{ minWidth: 0 }}>

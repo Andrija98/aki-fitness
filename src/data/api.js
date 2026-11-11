@@ -167,6 +167,54 @@ export async function getWorkoutsOverview() {
 }
 
 // U koliko programa je trening: izmene tada odmah vide klijenti tih programa.
+// ---------- Brisanje sadržaja (trener) ----------
+// Briše se samo ono što se nigde ne koristi. Baza i sama odbija brisanje upotrebljenog (strani ključ, kod 23503):
+// tada funkcija baca grešku sa inUse = true, pa ekran može da prikaže razlog umesto opšte greške.
+
+async function countRows(query) {
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+const HEAD = { count: 'exact', head: true };
+
+async function deleteById(table, id) {
+  const result = await supabase.from(table).delete().eq('id', id).select('id');
+  if (result.error?.code === '23503') throw Object.assign(new Error('Koristi se.'), { inUse: true });
+  if (!unwrap(result).length) throw new Error('Nije obrisano.');
+}
+
+// Vežba: u koliko treninga je i koliko serija su klijenti odradili.
+export async function getExerciseUsage(id) {
+  const [workouts, sets] = await Promise.all([
+    countRows(supabase.from('workout_items').select('id', HEAD).eq('exercise_id', id)),
+    countRows(supabase.from('session_sets').select('id', HEAD).eq('exercise_id', id)),
+  ]);
+  return { workouts, sets };
+}
+
+// Trening: u koliko programa je i koliko puta je odrađen.
+export async function getWorkoutDeleteUsage(id) {
+  const [programs, sessions] = await Promise.all([
+    getWorkoutUsage(id),
+    countRows(supabase.from('sessions').select('id', HEAD).eq('workout_id', id)),
+  ]);
+  return { programs, sessions };
+}
+
+// Program: koliko klijenata ga je ikad izabralo (i neaktivni upisi blokiraju brisanje) i koliko treninga je po njemu odrađeno.
+export async function getProgramDeleteUsage(id) {
+  const [enrollments, sessions] = await Promise.all([
+    countRows(supabase.from('enrollments').select('user_id', HEAD).eq('program_id', id)),
+    countRows(supabase.from('sessions').select('id', HEAD).eq('program_id', id)),
+  ]);
+  return { enrollments, sessions };
+}
+
+export const deleteExercise = (id) => deleteById('exercises', id);
+export const deleteWorkout = (id) => deleteById('workouts', id);   // stavke treninga idu kaskadno
+export const deleteProgram = (id) => deleteById('programs', id);   // raspored programa ide kaskadno; treninzi ostaju
+
 export async function getWorkoutUsage(id) {
   const rows = unwrap(await supabase.from('program_schedule').select('program_id').eq('workout_id', id));
   return new Set(rows.map((r) => r.program_id)).size;

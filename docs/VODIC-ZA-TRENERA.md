@@ -23,8 +23,9 @@ pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predl
 - Svaka vežba ima naziv, kratak savet za izvođenje i video.
 - Video: postavi snimak na YouTube kao **Unlisted** (ne javni, ali ko ima link može da ga gleda), kopiraj link i nalepi ga
   kod vežbe. Aplikacija prihvata obične YouTube linkove i one sa `youtu.be`.
-- Vežbe se ne brišu, jer su odrađeni treninzi klijenata vezani za njih. Ako vežba više nije potrebna, samo je ne stavljaj
-  u nove treninge.
+- **Brisanje** (Izmeni → Obriši vežbu): briše se samo vežba koja nije ni u jednom treningu i koju niko nije radio.
+  Ako je u treningu, prvo je ukloni iz treninga. Ako su je klijenti radili, ostaje zbog njihove istorije; pogrešan
+  naziv samo izmeni.
 
 ## 3. Treninzi i programi
 
@@ -34,10 +35,14 @@ pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predl
   ispod naziva vežbe, samo u ovom treningu (savet vežbe važi za sve programe).
 - Ista vežba ne može dvaput u istom treningu. Za superset sa vežbom koja se ponavlja napravi posebnu vežbu
   (npr. "Pregib za biceps sa gumom").
+- **Obriši trening** (dno ekrana): samo trening koji nije ni u jednom programu i koji niko nije odradio. Inače aplikacija
+  kaže zašto ne može (npr. "Nalazi se u programima (2)").
 
 **Profil → Uređivanje programa:** program je raspored treninga kroz nedelje (npr. 4 nedelje, 3 treninga nedeljno),
 za određeno mesto (kod kuće, teretana) i nivo.
 - **Nacrt** klijenti ne vide. Kad je program spreman, uključi **Objavljen**.
+- **Obriši program** (dno ekrana): samo program koji nijedan klijent nije izabrao i po kom niko nije trenirao. Takav
+  program umesto brisanja **sakrij**: isključi Objavljen i sačuvaj. Brisanjem programa nestaje samo raspored, treninzi ostaju.
 - Kad menjaš program koji klijenti već rade, izmena važi odmah, a njihovi odrađeni treninzi ostaju.
 - **Kućni trening muškarci** (3 treninga nedeljno, 12 nedelja) je unet kao **nacrt**. Pre objavljivanja dodaj videe za nove
   vežbe (Profil → Vežbe: one bez videa) i pregledaj opis i napomene.

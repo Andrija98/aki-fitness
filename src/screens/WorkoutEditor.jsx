@@ -1,13 +1,14 @@
 // Trener: novi trening ili izmena postojećeg. workoutId = 'novi' za novi trening.
-// Treninzi se ne brišu: na njih su vezani programi i odrađeni treninzi klijenata.
+// Brisanje: samo trening koji nije ni u jednom programu i koji niko nije odradio.
 
 import { useState } from 'react';
 import { useData } from '../lib/useData.js';
 import { back, navigate } from '../lib/router.js';
 import { toast } from '../lib/toast.js';
-import { getExercises, getWorkout, getWorkoutUsage, saveWorkout } from '../data/api.js';
+import { deleteWorkout, getExercises, getWorkout, getWorkoutDeleteUsage, getWorkoutUsage, saveWorkout } from '../data/api.js';
 import Icon from '../components/Icon.jsx';
 import LoadError from '../components/LoadError.jsx';
+import DeleteControl from '../components/DeleteControl.jsx';
 
 let nextKey = 0;
 const newKey = () => `item-${nextKey++}`;
@@ -205,6 +206,17 @@ function Editor({ exercises, workout, usage, isNew }) {
 
       {error && <p className="login-error" role="alert">{error}</p>}
       <button className="pill-btn pill-btn--accent" disabled={busy}>{busy ? 'Čuvam…' : 'Sačuvaj trening'}</button>
+      {!isNew && (
+        <DeleteControl label="Obriši trening"
+          checkUsage={async () => {
+            const { programs, sessions } = await getWorkoutDeleteUsage(workout.id);
+            const reasons = [];
+            if (programs) reasons.push(`Nalazi se u programima (${programs}). Prvo ga ukloni iz rasporeda programa.`);
+            if (sessions) reasons.push(`Klijenti su ga odradili (broj puta: ${sessions}), pa ostaje zbog istorije treninga.`);
+            return reasons;
+          }}
+          onDelete={async () => { await deleteWorkout(workout.id); toast('Trening obrisan'); navigate('trener-treninzi'); }} />
+      )}
     </form>
   );
 }
