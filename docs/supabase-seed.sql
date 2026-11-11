@@ -1,6 +1,7 @@
--- Demo sadržaj: 13 vežbi, 6 treninga, 4 programa.
--- Kako se koristi: Supabase → SQL Editor → nalepi ceo fajl → Run. Može da se pokrene više puta.
--- Fiksni ID-jevi: e… vežbe, b… treninzi, c… programi. api.js koristi ID-jeve programa za predlog posle onboardinga.
+-- ZASTARELO, NE POKRETATI NA PRAVOJ BAZI.
+-- Bio je demo sadržaj iz faze 2 (13 vežbi, 6 treninga, 4 programa). Trener sada pravi sopstveni sadržaj, a testovi
+-- koriste ISTE ID-jeve (e0…/b0…/c0…) za svoj privremeni sadržaj (e2e/fixtures.js) i posle testova ga brišu.
+-- Ostaje samo kao primer formata.
 
 begin;
 

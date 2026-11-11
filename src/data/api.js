@@ -4,14 +4,7 @@
 // pa bez filtera trener na svom telefonu ne bi video samo svoje.
 
 import { supabase } from '../lib/supabase.js';
-
-// Programi iz docs/supabase-seed.sql koji se predlažu posle onboardinga.
-const SUGGESTED_PROGRAMS = {
-  lagano: 'c0000000-0000-4000-8000-000000000001',
-  snagaKuca: 'c0000000-0000-4000-8000-000000000002',
-  masa: 'c0000000-0000-4000-8000-000000000003',
-  pauza: 'c0000000-0000-4000-8000-000000000004',
-};
+import { pickSuggestedProgram } from '../lib/programs.js';
 
 // Supabase ne baca grešku nego je vraća u rezultatu; ovde je pretvaramo u exception.
 function unwrap({ data, error }) {
@@ -359,14 +352,10 @@ export async function acceptPrivacy(version) {
   if (!rows.length) throw new Error('Pristanak nije sačuvan.');
 }
 
-// Prvi predlog programa na osnovu onboardinga.
+// Prvi predlog programa na osnovu onboardinga: po mestu i nivou, među objavljenim programima (lib/programs.js).
+// Bez objavljenih programa nema predloga; klijent bira sam kad ih trener objavi.
 async function suggestProgram(profile) {
-  const programs = await getPrograms();
-  let id = SUGGESTED_PROGRAMS.lagano; // eksplicitno, jer je lista abecedna
-  if (profile.location === 'teretana' && profile.level !== 'pocetnik') id = SUGGESTED_PROGRAMS.masa;
-  else if (profile.goal === 'kondicija') id = SUGGESTED_PROGRAMS.pauza;
-  else if (profile.goal === 'snaga') id = SUGGESTED_PROGRAMS.snagaKuca;
-  return programs.find((p) => p.id === id) ?? programs[0];
+  return pickSuggestedProgram(await getPrograms(), profile);
 }
 
 export async function getActiveProgramId() {

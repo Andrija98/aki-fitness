@@ -171,10 +171,17 @@ function Editor({ workouts, program, clientCount, isNew }) {
             </div>
           );
         })}
-        <button type="button" className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
-          disabled={!workouts.length} onClick={() => setSlots([...slots, { key: newKey(), workoutId: workouts[0].id }])}>
-          <Icon name="plus" size={18} /> Dodaj trening
-        </button>
+        {workouts.length ? (
+          <button type="button" className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            onClick={() => setSlots([...slots, { key: newKey(), workoutId: workouts[0].id }])}>
+            <Icon name="plus" size={18} /> Dodaj trening
+          </button>
+        ) : (
+          <div className="editor-note col" role="note" style={{ gap: 8 }}>
+            <span>Još nema nijednog treninga. Program je raspored treninga, pa prvo napravi trening.</span>
+            <button type="button" className="pill-btn" onClick={() => navigate('trener-treninzi')}>Idi na Uređivanje treninga</button>
+          </div>
+        )}
       </div>
 
       <label className="surface row editor-switch">

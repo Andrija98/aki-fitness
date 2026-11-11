@@ -128,8 +128,10 @@ mali dnevni limit; pre pravih klijenata treba sopstveni domen i servis za mejlov
 Pri registraciji trigger `handle_new_user` pravi prazan red u `profiles`; "nema profila" znači da je `goal` prazan.
 
 ### 5.2 Onboarding
-Ime → cilj i mesto → nivo i učestalost → težina. Posle čuvanja aplikacija predloži program
-(`suggestProgram` u api.js; podrazumevano "lagano", teretana + iskusan → "masa", kondicija → "pauza").
+Ime → cilj i mesto → nivo i učestalost → težina. Posle čuvanja aplikacija predloži program po **osobinama**, među
+objavljenim programima (`lib/programs.js`, `pickSuggestedProgram`): mesto je važnije (kod kuće se teretana ne može
+odraditi), pa nivo; program bez mesta ili za "Svi nivoi" odgovara svima; kod istog rezultata prvi po abecedi.
+Bez objavljenih programa nema predloga. Predlog ne zavisi od fiksnih ID-jeva, pa radi sa bilo kojim programom trenera.
 Isti ekran služi za izmenu ciljeva (`#/ciljevi`).
 
 ### 5.3 Treninzi
@@ -246,7 +248,7 @@ Za brisanje starog keša na svim telefonima povećaj `VERSION` u `sw.js`.
 ## 6. Baza
 
 SQL fajlovi u `docs/`, pokreću se ručno u Supabase SQL Editoru, **ovim redom**:
-`supabase-schema.sql`, `-seed`, `-measurements`, `-messages`, `-nutrition-targets`, `-foods`, `-foods-seed`,
+`supabase-schema.sql`, `-measurements`, `-messages`, `-nutrition-targets`, `-foods`, `-foods-seed`,
 `-food-preferences`, `-meal-plans`, `-privacy`, `-progress-photos`, `-message-photos`, `-workout-item-details`,
 `-memberships`, `-hardening` (poslednji). Sadržaj programa (vežbe, treninzi, program) dolazi posle šeme, npr.
 `supabase-program-kucni-muskarci.sql`; ti fajlovi su bezbedni za ponovno pokretanje (`on conflict do nothing`).
@@ -283,6 +285,11 @@ postojeću bazu se daje posebno (glavni fajl ostaje ispravan za novu instalaciju
 
 Pravila:
 - Testovi rade nad **pravom bazom**, ali samo sa nalozima `e2e-a`, `e2e-b`, `e2e-trener` (lozinke u `.env.test.local`).
+- **Testovi ne zavise od pravog sadržaja trenera.** Pre testova `e2e/global-setup.js` postavi zajednički sadržaj
+  (`e2e/fixtures.js`: 13 vežbi, 6 treninga, 4 objavljena programa, nazivi "E2E …", fiksni ID-jevi e0…/b0…/c0…), a
+  `e2e/global-teardown.js` ga posle obriše. Dok testovi traju, te programe vide i pravi klijenti. Čišćenja po "E2E*" u
+  testovima preskaču taj sadržaj (`NOT_FIXTURE_…`). Pravi sadržaj (npr. `supabase-program-kucni-muskarci.sql`) koristi
+  druge ID-jeve (e1…/b1…/c1…), pa se nikad ne poklapa sa testnim.
 - `resetAccount()` (u `e2e/helpers.js`) pre testa vraća nalog na početno stanje: briše njegove redove i fajlove, a odbija
   svaki nalog koji ne počinje sa `e2e-`. Briše kroz RLS, pa ni greškom ne može da dira tuđe podatke.
 - Test podaci imaju prefiks `E2E` i brišu se posle testa.

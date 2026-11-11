@@ -5,8 +5,10 @@ import {
   ACCOUNT_A, ACCOUNT_TRAINER, LAGANO, SNAGA_KUCA, GORNJI, KARDIO, SKLEKOVI, rest, resetAccount, loginUi, finishOnboarding, listPhotos,
   expectExercise, skipExercise, completeSetAndSkipRest, mockPasswordUpdate,
 } from './helpers.js';
+import { NOT_FIXTURE_EXERCISE, NOT_FIXTURE_PROGRAM, NOT_FIXTURE_WORKOUT } from './fixtures.js';
 import { PRIVACY_CONTROLLER, PRIVACY_EMAIL, PRIVACY_VERSION } from '../src/config.js';
 import { addDays, extendPaidUntil } from '../src/lib/membership.js';
+import { pickSuggestedProgram } from '../src/lib/programs.js';
 
 const loginHeading = (page) => page.getByRole('heading', { name: 'Prijavi se' });
 const BUNNY_GUID = '7a9b2c4d-1e2f-4a3b-9c8d-0123456789ab';
@@ -138,7 +140,7 @@ test.describe('trener: klijenti', () => {
     await expect(page.getByRole('heading', { name: 'E2E Klijent' })).toBeVisible();
     await expect(page.getByRole('img', { name: /Grafikon težine: od 75 kg .* do 72 kg/ })).toBeVisible();
     await expect(page.locator('.measures')).toContainText('−4 cm');
-    await expect(page.getByText('Gornji deo tela')).toBeVisible();
+    await expect(page.getByText('E2E Gornji deo tela')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Upiši težinu' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Upiši mere' })).toHaveCount(0);
   });
@@ -146,8 +148,9 @@ test.describe('trener: klijenti', () => {
 
 test.describe('trener: vežbe', () => {
   let trainer;
-  // Prava baza je zajednička: test vežbe nose prefiks E2E, nisu ni u jednom treningu i brišu se.
-  const removeTestExercises = () => rest('exercises?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+  // Prava baza je zajednička: test vežbe nose prefiks E2E, nisu ni u jednom treningu i brišu se
+  // (zajednički E2E sadržaj iz e2e/fixtures.js se preskače).
+  const removeTestExercises = () => rest(`exercises?name=like.E2E*&${NOT_FIXTURE_EXERCISE}`, { token: trainer.token, method: 'DELETE' });
 
   test.beforeAll(async () => {
     trainer = await resetAccount(ACCOUNT_TRAINER);
@@ -170,7 +173,7 @@ test.describe('trener: vežbe', () => {
     const add = page.getByRole('button', { name: 'Dodaj vežbu' });
     await add.click();
     await expect(page.getByRole('alert')).toHaveText('Unesi naziv vežbe.');
-    await page.getByLabel('Naziv vežbe').fill('bench PRESS');
+    await page.getByLabel('Naziv vežbe').fill('e2e BENCH press');
     await add.click();
     await expect(page.getByRole('alert')).toHaveText('Vežba sa tim nazivom već postoji.');
 
@@ -188,7 +191,7 @@ test.describe('trener: vežbe', () => {
 
     await page.reload();
     await expect(page.getByText('Drugi savet')).toBeVisible();
-    const saved = await rest('exercises?name=like.E2E*&select=name,cue', { token: trainer.token });
+    const saved = await rest(`exercises?name=like.E2E*&${NOT_FIXTURE_EXERCISE}&select=name,cue`, { token: trainer.token });
     expect(saved.rows).toEqual([{ name: 'E2E Izmenjena', cue: 'Drugi savet' }]);
   });
 });
@@ -196,7 +199,7 @@ test.describe('trener: vežbe', () => {
 test.describe('trener: treninzi', () => {
   let trainer;
   // Test treninzi nose prefiks E2E, nisu ni u jednom programu (klijenti ih ne vide) i brišu se zajedno sa stavkama.
-  const removeTestWorkouts = () => rest('workouts?title=like.E2E*', { token: trainer.token, method: 'DELETE' });
+  const removeTestWorkouts = () => rest(`workouts?title=like.E2E*&${NOT_FIXTURE_WORKOUT}`, { token: trainer.token, method: 'DELETE' });
   const savedItems = async (title) => {
     const result = await rest(`workouts?title=eq.${encodeURIComponent(title)}&select=workout_items(position,reps,reps_max,seconds,kg,rest_sec,note,exercises(name))`, { token: trainer.token });
     expect(result.rows).toHaveLength(1);
@@ -236,12 +239,12 @@ test.describe('trener: treninzi', () => {
     await page.getByRole('button', { name: 'Dodaj vežbu' }).click();
     await page.getByRole('button', { name: 'Dodaj vežbu' }).click();
     await expect(page.getByLabel('Vežba 1', { exact: true })).toHaveValue(/.+/);
-    await page.getByLabel('Vežba 1', { exact: true }).selectOption({ label: 'Bench press' });
-    await page.getByLabel('Vežba 2', { exact: true }).selectOption({ label: 'Bench press' });
+    await page.getByLabel('Vežba 1', { exact: true }).selectOption({ label: 'E2E Bench press' });
+    await page.getByLabel('Vežba 2', { exact: true }).selectOption({ label: 'E2E Bench press' });
     await save.click();
     await expect(alert).toHaveText('Ista vežba je dvaput u treningu.');
 
-    await page.getByLabel('Vežba 2', { exact: true }).selectOption({ label: 'Plank' });
+    await page.getByLabel('Vežba 2', { exact: true }).selectOption({ label: 'E2E Plank' });
     await page.getByRole('radiogroup', { name: 'Mera za vežbu 2' }).getByRole('radio', { name: 'Sekunde' }).click();
     await page.getByLabel('Sekundi, vežba 2').fill('45');
     await page.getByLabel('Kilaža (kg), vežba 1').fill('42,5');
@@ -258,27 +261,27 @@ test.describe('trener: treninzi', () => {
     await expect(page.getByLabel('Do (raspon), vežba 2')).toHaveCount(0); // vežba na sekunde nema raspon
     await page.locator('#note-1').fill('Opcija 2: sklek');
 
-    await page.getByRole('button', { name: 'Pomeri gore: Plank' }).click();
+    await page.getByRole('button', { name: 'Pomeri gore: E2E Plank' }).click();
     await save.click();
     await expect(page.getByText('Trening sačuvan')).toBeVisible();
     await expect(page.getByRole('button', { name: /E2E Trening/ })).toContainText('2 vežbe');
 
     expect(await savedItems('E2E Trening')).toEqual([
-      { position: 1, name: 'Plank', reps: null, repsMax: null, seconds: 45, kg: null, rest: 60, note: null },
-      { position: 2, name: 'Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
+      { position: 1, name: 'E2E Plank', reps: null, repsMax: null, seconds: 45, kg: null, rest: 60, note: null },
+      { position: 2, name: 'E2E Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
     ]);
 
     // Izmena: uklanjamo vežbu i menjamo naziv. Stare stavke moraju da nestanu.
     await page.getByRole('button', { name: /E2E Trening/ }).click();
     await expect(page.getByLabel('Sekundi, vežba 1')).toHaveValue('45');
-    await page.getByRole('button', { name: 'Ukloni: Plank' }).click();
+    await page.getByRole('button', { name: 'Ukloni: E2E Plank' }).click();
     await page.getByLabel('Naziv treninga').fill('E2E Izmenjen');
     await save.click();
     // Ne čekamo poruku "Trening sačuvan": ona može da ostane od prethodnog čuvanja. Lista se prikaže tek kad je sve upisano.
     await expect(page.getByRole('button', { name: /E2E Izmenjen/ })).toContainText('1 vežba');
     // Raspon i napomena su se učitali u editor i sačuvali ponovo.
     expect(await savedItems('E2E Izmenjen')).toEqual([
-      { position: 1, name: 'Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
+      { position: 1, name: 'E2E Bench press', reps: 10, repsMax: 12, seconds: null, kg: 42.5, rest: 60, note: 'Opcija 2: sklek' },
     ]);
 
     // Klijent u treningu vidi cilj sa rasponom i napomenu.
@@ -290,7 +293,7 @@ test.describe('trener: treninzi', () => {
 
   test('brisanje: neupotrebljen trening i vežba se brišu, upotrebljeni pokazuju razlog', async ({ page }) => {
     await resetAccount(ACCOUNT_TRAINER);
-    const removeTestExercises = () => rest('exercises?name=like.E2E*', { token: trainer.token, method: 'DELETE' });
+    const removeTestExercises = () => rest('exercises?name=eq.E2E%20Vežba%20za%20brisanje', { token: trainer.token, method: 'DELETE' });
     await removeTestExercises();
     const [workout] = (await rest('workouts', { token: trainer.token, method: 'POST', body: { title: 'E2E Za brisanje' } })).rows;
     await rest('exercises', { token: trainer.token, method: 'POST', body: { name: 'E2E Vežba za brisanje' } });
@@ -298,7 +301,7 @@ test.describe('trener: treninzi', () => {
       await loginUi(page, ACCOUNT_TRAINER);
       await finishOnboarding(page);
 
-      // Upotrebljen trening (Gornji deo tela je u dva programa): razlog, bez potvrde.
+      // Upotrebljen trening (E2E Gornji deo tela je u dva programa): razlog, bez potvrde.
       await page.goto(`/#/trener-trening/${GORNJI}`);
       await page.getByRole('button', { name: 'Obriši trening' }).click();
       await expect(page.getByRole('note').filter({ hasText: 'Ne može da se obriše' })).toContainText('Nalazi se u programima (2)');
@@ -315,9 +318,9 @@ test.describe('trener: treninzi', () => {
       await expect(page).toHaveURL(/#\/trener-treninzi$/);
       expect((await rest(`workouts?id=eq.${workout.id}&select=id`, { token: trainer.token })).rows).toEqual([]);
 
-      // Vežbe: upotrebljena (Sklekovi) pokazuje razlog, nova se briše.
+      // Vežbe: upotrebljena (E2E Sklekovi) pokazuje razlog, nova se briše.
       await page.goto('/#/vezbe');
-      await page.getByRole('button', { name: 'Izmeni vežbu Sklekovi' }).click();
+      await page.getByRole('button', { name: 'Izmeni vežbu E2E Sklekovi' }).click();
       await page.getByRole('button', { name: 'Obriši vežbu' }).click();
       await expect(page.getByRole('note').filter({ hasText: 'Ne može da se obriše' })).toContainText('Nalazi se u treninzima');
       await page.getByRole('button', { name: 'Odustani' }).click();
@@ -336,12 +339,12 @@ test.describe('trener: treninzi', () => {
   test('pauza 0 (superset): bez ekrana pauze, odmah sledeća vežba', async ({ page }) => {
     await resetAccount(ACCOUNT_TRAINER);
     const [workout] = (await rest('workouts', { token: trainer.token, method: 'POST', body: { title: 'E2E Superset' } })).rows;
-    const exercises = (await rest('exercises?name=in.(Plank,Sklekovi)&select=id,name', { token: trainer.token })).rows;
-    const idOf = (name) => exercises.find((e) => e.name === name).id;
+    const PLANK = 'e0000000-0000-4000-8000-000000000007';
+    const idOf = (name) => ({ 'E2E Plank': PLANK, 'E2E Sklekovi': SKLEKOVI })[name];
     // PostgREST pri upisu više redova traži iste ključeve u svakom redu.
     const inserted = await rest('workout_items', { token: trainer.token, method: 'POST', body: [
-      { workout_id: workout.id, exercise_id: idOf('Plank'), position: 1, sets: 1, reps: null, reps_max: null, seconds: 30, rest_sec: 0, note: 'Superset sa sledećom vežbom.' },
-      { workout_id: workout.id, exercise_id: idOf('Sklekovi'), position: 2, sets: 2, reps: 10, reps_max: 12, seconds: null, rest_sec: 60, note: null },
+      { workout_id: workout.id, exercise_id: idOf('E2E Plank'), position: 1, sets: 1, reps: null, reps_max: null, seconds: 30, rest_sec: 0, note: 'Superset sa sledećom vežbom.' },
+      { workout_id: workout.id, exercise_id: idOf('E2E Sklekovi'), position: 2, sets: 2, reps: 10, reps_max: 12, seconds: null, rest_sec: 60, note: null },
     ] });
     expect(inserted.status).toBe(201);
 
@@ -362,7 +365,7 @@ test.describe('trener: treninzi', () => {
     await page.goto(`/#/trener-trening/${GORNJI}`);
     await expect(page.getByRole('heading', { name: 'Izmena treninga' })).toBeVisible();
     await expect(page.getByRole('note')).toContainText('Ovaj trening koristi programa: 2.');
-    await expect(page.getByLabel('Naziv treninga')).toHaveValue('Gornji deo tela');
+    await expect(page.getByLabel('Naziv treninga')).toHaveValue('E2E Gornji deo tela');
   });
 });
 
@@ -379,7 +382,7 @@ test('pretraga programa radi i kad program nema opis', async ({ page }) => {
   await finishOnboarding(page);
   await page.getByRole('link', { name: 'Treninzi' }).click();
   await page.getByLabel('Pretraži programe').fill('snaga');
-  await expect(page.getByText('Snaga bez teretane')).toBeVisible();
+  await expect(page.getByText('E2E Snaga bez teretane')).toBeVisible();
   await resetAccount(ACCOUNT_A);
 });
 
@@ -387,7 +390,7 @@ test.describe('trener: programi', () => {
   let trainer;
   let draftId;
   // Test programi nose prefiks E2E i nikad nisu stvarno objavljeni. Upise klijenta brišemo pre programa (strani ključ).
-  const removeTestPrograms = () => rest('programs?title=like.E2E*', { token: trainer.token, method: 'DELETE' });
+  const removeTestPrograms = () => rest(`programs?title=like.E2E*&${NOT_FIXTURE_PROGRAM}`, { token: trainer.token, method: 'DELETE' });
   const savedProgram = async (title) => {
     const result = await rest(`programs?title=eq.${encodeURIComponent(title)}&select=published,weeks,program_schedule(position,workouts(title))`, { token: trainer.token });
     expect(result.rows).toHaveLength(1);
@@ -460,21 +463,21 @@ test.describe('trener: programi', () => {
     await expect(alert).toHaveText('Dodaj bar jedan trening u raspored.');
 
     for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Dodaj trening' }).click();
-    await page.getByLabel('Trening 1 u rasporedu').selectOption({ label: 'Gornji deo tela' });
-    await page.getByLabel('Trening 2 u rasporedu').selectOption({ label: 'Kardio krug' });
-    await page.getByLabel('Trening 3 u rasporedu').selectOption({ label: 'Gornji deo tela' });
+    await page.getByLabel('Trening 1 u rasporedu').selectOption({ label: 'E2E Gornji deo tela' });
+    await page.getByLabel('Trening 2 u rasporedu').selectOption({ label: 'E2E Kardio krug' });
+    await page.getByLabel('Trening 3 u rasporedu').selectOption({ label: 'E2E Gornji deo tela' });
     await page.getByRole('button', { name: 'Pomeri gore trening 2' }).click();
     await expect(page.getByRole('checkbox', { name: /Objavljen/ })).not.toBeChecked();
     await save.click();
 
     await expect(page.getByRole('button', { name: /E2E Program/ })).toContainText('Nacrt');
-    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['Kardio krug', 'Gornji deo tela', 'Gornji deo tela'] });
+    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['E2E Kardio krug', 'E2E Gornji deo tela', 'E2E Gornji deo tela'] });
 
     await page.getByRole('button', { name: /E2E Program/ }).click();
     await page.getByRole('button', { name: 'Ukloni trening 1' }).click();
     await save.click();
     await expect(page.getByRole('button', { name: /E2E Program/ })).toContainText('2 u rasporedu');
-    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['Gornji deo tela', 'Gornji deo tela'] });
+    expect(await savedProgram('E2E Program')).toEqual({ published: false, weeks: 6, schedule: ['E2E Gornji deo tela', 'E2E Gornji deo tela'] });
   });
 
   test('objavljivanje šalje published, a upozorenje broji klijente programa', async ({ page }) => {
@@ -503,14 +506,14 @@ test.describe('trener: programi', () => {
 
   test('klijent ne vidi nacrt ni u aplikaciji ni preko API-ja', async ({ page }) => {
     const client = await resetAccount(ACCOUNT_A);
-    const viaApi = await rest('programs?title=like.E2E*&select=id', { token: client.token });
+    const viaApi = await rest(`programs?id=eq.${draftId}&select=id`, { token: client.token });
     expect(viaApi.rows).toEqual([]);
 
     await loginUi(page, ACCOUNT_A);
     await finishOnboarding(page);
     await page.getByRole('link', { name: 'Treninzi' }).click();
-    await expect(page.getByRole('button', { name: /^Lagano do forme/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /E2E/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^E2E Lagano do forme/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /E2E Nacrt/ })).toHaveCount(0);
   });
 });
 
@@ -1064,19 +1067,19 @@ test.describe('trener: video snimci', () => {
     await expect(page.getByRole('heading', { name: 'Vežbe' })).toBeVisible();
     await expect(page.getByText(/od \d+ vežbi ima video/)).toBeVisible();
 
-    await page.getByLabel('Link videa za Bench press').fill('nije link');
-    await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
+    await page.getByLabel('Link videa za E2E Bench press').fill('nije link');
+    await page.getByRole('button', { name: 'Sačuvaj video za E2E Bench press' }).click();
     await expect(page.getByRole('alert')).toHaveText('To nije ispravan YouTube ili Bunny link.');
     expect(saved).toBeNull();
 
-    await page.getByLabel('Link videa za Bench press').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s');
-    await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
+    await page.getByLabel('Link videa za E2E Bench press').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s');
+    await page.getByRole('button', { name: 'Sačuvaj video za E2E Bench press' }).click();
     await expect(page.getByText('Video sačuvan')).toBeVisible();
     expect(saved).toEqual({ video_url: 'https://youtu.be/dQw4w9WgXcQ' });
 
     // Bunny Stream link (play oblik) se čuva kao embed link.
-    await page.getByLabel('Link videa za Bench press').fill(`https://iframe.mediadelivery.net/play/123456/${BUNNY_GUID}`);
-    await page.getByRole('button', { name: 'Sačuvaj video za Bench press' }).click();
+    await page.getByLabel('Link videa za E2E Bench press').fill(`https://iframe.mediadelivery.net/play/123456/${BUNNY_GUID}`);
+    await page.getByRole('button', { name: 'Sačuvaj video za E2E Bench press' }).click();
     await expect.poll(() => saved?.video_url).toBe(`https://iframe.mediadelivery.net/embed/123456/${BUNNY_GUID}`);
   });
 
@@ -1118,6 +1121,8 @@ test.describe('prijavljen klijent', () => {
     page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
     page.on('pageerror', (e) => consoleErrors.push(e.message));
 
+    // Program unapred, da tok ne zavisi od trenerovih pravih programa (kad je program izabran, predloga nema).
+    await rest('enrollments', { token: account.token, method: 'POST', body: { user_id: account.id, program_id: LAGANO } });
     await finishOnboarding(page, { weight: '72,5' });
     await page.getByRole('button', { name: /Današnji trening/ }).click();
 
@@ -1156,6 +1161,16 @@ test.describe('prijavljen klijent', () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test('posle onboardinga klijent dobija predlog programa po mestu i nivou', async ({ page }) => {
+    // Očekivani program se računa iz programa koji su sada objavljeni (E2E i trenerovi), istom funkcijom kao aplikacija.
+    const published = (await rest('programs?published=is.true&select=id,title,location,level&order=title', { token: account.token })).rows;
+    const expected = pickSuggestedProgram(published, { location: 'kuca', level: 'pocetnik' }); // izbor iz finishOnboarding
+    await finishOnboarding(page);
+    const active = await rest(`enrollments?user_id=eq.${account.id}&active=is.true&select=program_id`, { token: account.token });
+    expect(active.rows).toEqual([{ program_id: expected.id }]);
+    await expect(page.getByRole('button', { name: /Današnji trening/ })).toBeVisible();
+  });
+
   test('upis težine, promena programa i odjava', async ({ page }) => {
     await finishOnboarding(page);
 
@@ -1165,7 +1180,7 @@ test.describe('prijavljen klijent', () => {
     await expect(page.getByText(/poslednje: 80/)).toBeVisible();
 
     await page.getByRole('link', { name: 'Treninzi' }).click();
-    await page.getByRole('button', { name: /Snaga bez teretane/ }).click();
+    await page.getByRole('button', { name: /E2E Snaga bez teretane/ }).click();
     await page.getByRole('button', { name: 'Izaberi ovaj program' }).click();
     await expect(page.getByRole('button', { name: /Počni sledeći trening/ })).toBeVisible();
 
@@ -1228,7 +1243,7 @@ test.describe('prijavljen klijent', () => {
 
     // Aktiviranje programa
     await page.getByRole('link', { name: 'Treninzi' }).click();
-    await page.getByRole('button', { name: /Snaga bez teretane/ }).click();
+    await page.getByRole('button', { name: /E2E Snaga bez teretane/ }).click();
     await expect(page.getByRole('button', { name: 'Izaberi ovaj program' })).toBeVisible();
     await cutNetwork(page);
     await page.getByRole('button', { name: 'Izaberi ovaj program' }).click();
@@ -1311,7 +1326,7 @@ test.describe('prijavljen klijent', () => {
     }
 
     await page.getByRole('link', { name: 'Napredak' }).click();
-    await expect(page.getByText('Gornji deo tela')).toBeVisible();
+    await expect(page.getByText('E2E Gornji deo tela')).toBeVisible();
     await expect(page.getByText('10 min · 2 serije')).toBeVisible();
   });
 

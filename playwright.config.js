@@ -8,6 +8,9 @@ for (const file of ['.env.local', '.env.test.local']) {
 
 export default defineConfig({
   testDir: 'e2e',
+  // Zajednički E2E sadržaj: pravi se pre testova, briše posle (e2e/fixtures.js).
+  globalSetup: './e2e/global-setup.js',
+  globalTeardown: './e2e/global-teardown.js',
   workers: 1, // svi testovi dele iste e2e naloge, pa ne smeju paralelno
   timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never' }]],

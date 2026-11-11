@@ -13,7 +13,10 @@ Sve trenerske stvari su u **Profilu** (krug sa tvojim inicijalom gore desno na P
 4. **Objavi programe** koje klijenti treba da vide (Profil → Uređivanje programa).
 
 Nalog za novog klijenta za sada otvara Andrija. Klijent pri prvoj prijavi daje pristanak na obradu podataka,
-pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predlog programa.
+pa prolazi kratak upitnik (ime, cilj, gde trenira, nivo, težina) i dobija predlog programa: objavljeni program koji
+odgovara mestu (kod kuće / teretana), pa nivou. Program za "Svi nivoi" odgovara svakom nivou.
+
+**Redosled unosa:** prvo **vežbe** (Profil → Vežbe → +), pa **treninzi** (od vežbi), pa **programi** (od treninga).
 
 ---
 

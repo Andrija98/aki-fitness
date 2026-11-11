@@ -199,9 +199,16 @@ function Editor({ exercises, workout, usage, isNew }) {
             </div>
           );
         })}
-        <button type="button" className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={addItem}>
-          <Icon name="plus" size={18} /> Dodaj vežbu
-        </button>
+        {exercises.length ? (
+          <button type="button" className="pill-btn" style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }} onClick={addItem}>
+            <Icon name="plus" size={18} /> Dodaj vežbu
+          </button>
+        ) : (
+          <div className="editor-note col" role="note" style={{ gap: 8 }}>
+            <span>Još nema nijedne vežbe. Trening se pravi od vežbi, pa prvo dodaj vežbe.</span>
+            <button type="button" className="pill-btn" onClick={() => navigate('vezbe')}>Idi na Vežbe</button>
+          </div>
+        )}
       </div>
 
       {error && <p className="login-error" role="alert">{error}</p>}

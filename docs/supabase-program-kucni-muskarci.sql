@@ -3,7 +3,8 @@
 -- Kako se koristi: Supabase → SQL Editor → New query → nalepi ceo fajl → Run.
 -- Bezbedno je pokrenuti ponovo: postojeći redovi sa istim ID-jem se preskaču (on conflict do nothing).
 -- Program je NACRT (published = false): klijenti ga ne vide dok ga trener ne objavi u aplikaciji.
--- Nove vežbe nemaju video; trener ih dodaje u Profil → Vežbe (YouTube, Unlisted).
+-- Vežbe nemaju video; trener dodaje Bunny ili YouTube link u Profil → Vežbe.
+-- Sve vežbe pravi ovaj fajl (ne zavisi od drugog sadržaja); ID-jevi e1… ne smeju da se poklope sa test sadržajem (e0…).
 
 -- ============ Nove vežbe ============
 insert into public.exercises (id, name) values
@@ -11,7 +12,7 @@ insert into public.exercises (id, name) values
   ('e1000000-0000-4000-8000-000000000002', 'Dijamant sklek'),
   ('e1000000-0000-4000-8000-000000000003', 'Propadanja na razboju'),
   ('e1000000-0000-4000-8000-000000000004', 'Ekstenzija za triceps sa gumom iza glave'),
-  ('e1000000-0000-4000-8000-000000000005', 'Finisher: grudi i triceps'),
+  ('e1000000-0000-4000-8000-000000000005', 'Legionari'),
   ('e1000000-0000-4000-8000-000000000006', 'Bugarski čučanj za kvadriceps'),
   ('e1000000-0000-4000-8000-000000000007', 'Iskorak napred'),
   ('e1000000-0000-4000-8000-000000000008', 'Izdržaj u čučnju'),
@@ -22,7 +23,11 @@ insert into public.exercises (id, name) values
   ('e1000000-0000-4000-8000-000000000013', 'Pregib za biceps sa gumom'),
   ('e1000000-0000-4000-8000-000000000014', 'Leđnjaci'),
   ('e1000000-0000-4000-8000-000000000015', 'Trbušnjaci sa podignutim nogama'),
-  ('e1000000-0000-4000-8000-000000000016', 'Finisher: leđa, ramena i biceps')
+  ('e1000000-0000-4000-8000-000000000016', 'Jumping jacks'),
+  ('e1000000-0000-4000-8000-000000000017', 'Sklek'),
+  ('e1000000-0000-4000-8000-000000000018', 'Čučanj'),
+  ('e1000000-0000-4000-8000-000000000019', 'Rumunsko mrtvo dizanje'),
+  ('e1000000-0000-4000-8000-000000000020', 'Pregib za biceps')
 on conflict (id) do nothing;
 
 -- ============ Treninzi ============
@@ -33,13 +38,12 @@ insert into public.workouts (id, title, minutes, equipment) values
 on conflict (id) do nothing;
 
 -- Stavke se upisuju samo ako trening još nema stavki (ponovno pokretanje ne pravi duplikate).
--- Postojeće vežbe iz osnovnog sadržaja: Sklekovi (…04), Čučanj (…01), Rumunsko mrtvo dizanje (…09), Biceps pregib (…06).
 -- Odmor: 180 s za glavne (teške) vežbe, 120–90 s za ostale; u supersetu 0 s posle prve vežbe para.
 insert into public.workout_items (workout_id, exercise_id, position, sets, reps, reps_max, seconds, rest_sec, note)
 select v.workout_id::uuid, v.exercise_id::uuid, v.position, v.sets, v.reps, v.reps_max, v.seconds, v.rest_sec, v.note
 from (values
   -- Trening 1: grudi i triceps
-  ('b1000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000004', 1, 4, 10, 12, null, 180,
+  ('b1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000017', 1, 4, 10, 12, null, 180,
    'Običan sklek, ili sa opterećenjem na leđima ako možeš; ako je pretežak, sa kolena. Opcija 2, ako imaš klupu i šipku: bench press. Radiš jednu varijantu.'),
   ('b1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000001', 2, 3, 10, 12, null, 90, null),
   ('b1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000002', 3, 3, 10, 12, null, 90,
@@ -48,13 +52,13 @@ from (values
    'Opcija 2, ako nemaš razboj: propadanja za triceps na klupi. Radiš jednu varijantu.'),
   ('b1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000004', 5, 3, 10, 12, null, 90, null),
   ('b1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000005', 6, 3, null, null, 30, 30,
-   'Prati video: 30 sekundi rada, pa 30 sekundi odmora. Ukupno 3 kruga.'),
+   'Finisher za celo telo: 30 sekundi legionara, pa 30 sekundi odmora. Ukupno 3 kruga.'),
   -- Trening 2: noge
-  ('b1000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 1, 4, 10, 12, null, 180,
+  ('b1000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000000018', 1, 4, 10, 12, null, 180,
    'Običan čučanj ili čučanj sa opterećenjem, prema opremi koju imaš. Bez opterećenja uradi koliko god možeš ponavljanja, do otkaza.'),
   ('b1000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000000006', 2, 3, 10, 12, null, 120,
    'Na snimku je sa bučicom; ako si početnik, radi bez nje.'),
-  ('b1000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000009', 3, 4, 12, null, null, 180,
+  ('b1000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000000019', 3, 4, 12, null, null, 180,
    'Sa girjom ili sa bučicom, prema opremi koju imaš. Radiš jednu varijantu.'),
   ('b1000000-0000-4000-8000-000000000002', 'e1000000-0000-4000-8000-000000000007', 4, 3, 10, null, null, 90,
    '10 ponavljanja po nozi. Bez opterećenja ili sa tegom/bučicom.'),
@@ -75,10 +79,10 @@ from (values
    'Superset sa sledećom vežbom: leđnjaci, odmah zatim trbušnjaci, pa tek onda odmor. Ukupno 3 puta.'),
   ('b1000000-0000-4000-8000-000000000003', 'e1000000-0000-4000-8000-000000000015', 6, 3, 10, 15, null, 90,
    'Superset sa leđnjacima. Ruke iza leđa.'),
-  ('b1000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000006', 7, 4, 10, 12, null, 90,
+  ('b1000000-0000-4000-8000-000000000003', 'e1000000-0000-4000-8000-000000000020', 7, 4, 10, 12, null, 90,
    'Sa gumom, šipkom ili bučicom. Posebna vežba, radi se pored pregiba iz superseta.'),
   ('b1000000-0000-4000-8000-000000000003', 'e1000000-0000-4000-8000-000000000016', 8, 3, null, null, 30, 30,
-   'Prati video: 30 sekundi rada, pa 30 sekundi odmora. Ukupno 3 kruga.')
+   'Finisher za celo telo: 30 sekundi jumping jacks, pa 30 sekundi odmora. Ukupno 3 kruga.')
 ) as v(workout_id, exercise_id, position, sets, reps, reps_max, seconds, rest_sec, note)
 where not exists (select 1 from public.workout_items wi where wi.workout_id = v.workout_id::uuid);
 
